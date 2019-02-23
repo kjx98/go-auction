@@ -202,12 +202,17 @@ func buildBenchOrderBook() {
 	tt := time.Now()
 	rand.Seed(tt.Unix())
 	//orders := []simOrderType{}
-	for i := 0; i < 2e5; i++ {
+	count := int(2e6)
+	for i := 0; i < count; i++ {
 		price := rand.Intn(2000)*10 + pclose - 10000
 		vol := rand.Intn(100) + 1
 		SendOrder("cu1908", (i&1) != 0, vol, price)
 	}
 	// build cu1908 orderBook
+	et := time.Now()
+	du := et.Sub(tt)
+	log.Infof("Build rand %d orders cost %.3f seconds, %g Ops", count, du.Seconds(),
+		float64(count)/du.Seconds())
 	if ob, ok := simOrderBook["cu1908"]; ok {
 		log.Infof("New orderBook bids: %d, asks: %d", ob.bids.Len(), ob.asks.Len())
 	}
@@ -215,8 +220,8 @@ func buildBenchOrderBook() {
 
 func Benchmark_callAuction(b *testing.B) {
 	b.StopTimer()
-	logging.SetLevel(logging.WARNING, "go-auction")
 	buildBenchOrderBook()
+	logging.SetLevel(logging.WARNING, "go-auction")
 	b.StartTimer()
 	for i := 0; i < b.N; i++ {
 		gotLast, vol, gotVolRemain := callAuction("cu1908", pclose)
@@ -228,8 +233,8 @@ func Benchmark_callAuction(b *testing.B) {
 
 func Benchmark_callAuctionNew(b *testing.B) {
 	b.StopTimer()
-	logging.SetLevel(logging.WARNING, "go-auction")
 	buildBenchOrderBook()
+	logging.SetLevel(logging.WARNING, "go-auction")
 	b.StartTimer()
 	for i := 0; i < b.N; i++ {
 		gotLast, vol, gotVolRemain := callAuctionNew("cu1908", pclose)
