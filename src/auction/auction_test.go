@@ -24,7 +24,7 @@ var orders1 = []orderArgs{
 	{"cu1906", false, 20, 48000},
 	{"cu1906", false, 30, 46000},
 	{"cu1906", false, 45, 43500},
-	{"cu1906", true, 25, 43800},
+	{"cu1906", true, 25, 43900},
 	{"cu1906", false, 10, 43200},
 	{"cu1906", true, 15, 43800},
 	{"cu1906", false, 20, 43200},
@@ -126,7 +126,7 @@ func Test_getBestPrice(t *testing.T) {
 	}
 }
 
-func Test_callAuction(t *testing.T) {
+func TestCallAuction(t *testing.T) {
 	type args struct {
 		sym    string
 		pclose int
@@ -140,12 +140,13 @@ func Test_callAuction(t *testing.T) {
 	}{
 		// TODO: Add test cases.
 		{"callAuction test1", args{"cu1906", 40000}, 43500, 75, 15},
+		{"callAuction test1", args{"cu1906", 50000}, 43500, 75, 15},
 	}
 	cleanupOrderBook("cu1906")
 	buildOrBook(orders1)
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			gotLast, gotMaxVol, gotVolRemain := callAuction(tt.args.sym, tt.args.pclose)
+			gotLast, gotMaxVol, gotVolRemain := CallAuction(tt.args.sym, tt.args.pclose)
 			if gotLast != tt.wantLast {
 				t.Errorf("callAuction() gotLast = %v, want %v", gotLast, tt.wantLast)
 			}
@@ -159,7 +160,7 @@ func Test_callAuction(t *testing.T) {
 	}
 }
 
-func Test_callAuctionNew(t *testing.T) {
+func TestMatchCrossOld(t *testing.T) {
 	type args struct {
 		sym    string
 		pclose int
@@ -172,21 +173,32 @@ func Test_callAuctionNew(t *testing.T) {
 		wantVolRemain int
 	}{
 		// TODO: Add test cases.
-		{"callAuctionNew test1", args{"cu1906", 40000}, 43500, 75, 15},
+		{"MatchCrossOld test1", args{"cu1906", 40000}, 43500, 75, 0},
+		{"MatchCrossOld test1", args{"cu1906", 50000}, 43900, 75, 0},
 	}
 	cleanupOrderBook("cu1906")
 	buildOrBook(orders1)
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			gotLast, gotMaxVol, gotVolRemain := callAuctionNew(tt.args.sym, tt.args.pclose)
+			gotLast, gotMaxVol, gotVolRemain := MatchCrossOld(tt.args.sym, tt.args.pclose)
 			if gotLast != tt.wantLast {
-				t.Errorf("callAuctionNew() gotLast = %v, want %v", gotLast, tt.wantLast)
+				t.Errorf("MatchCrossOld() gotLast = %v, want %v", gotLast, tt.wantLast)
 			}
 			if gotMaxVol != tt.wantMaxVol {
-				t.Errorf("callAuctionNew() gotMaxVol = %v, want %v", gotMaxVol, tt.wantMaxVol)
+				t.Errorf("MatchCrossOld() gotMaxVol = %v, want %v", gotMaxVol, tt.wantMaxVol)
 			}
 			if gotVolRemain != tt.wantVolRemain {
-				t.Errorf("callAuctionNew() gotVolRemain = %v, want %v", gotVolRemain, tt.wantVolRemain)
+				t.Errorf("MatchCrossOld() gotVolRemain = %v, want %v", gotVolRemain, tt.wantVolRemain)
+			}
+			gotLast, gotMaxVol, gotVolRemain = MatchCross(tt.args.sym, tt.args.pclose)
+			if gotLast != tt.wantLast {
+				t.Errorf("MatchCross() gotLast = %v, want %v", gotLast, tt.wantLast)
+			}
+			if gotMaxVol != tt.wantMaxVol {
+				t.Errorf("MatchCross() gotMaxVol = %v, want %v", gotMaxVol, tt.wantMaxVol)
+			}
+			if gotVolRemain != tt.wantVolRemain {
+				t.Errorf("MatchCross() gotVolRemain = %v, want %v", gotVolRemain, tt.wantVolRemain)
 			}
 		})
 	}
@@ -218,28 +230,41 @@ func buildBenchOrderBook() {
 	}
 }
 
-func Benchmark_callAuction(b *testing.B) {
+func BenchmarkCallAuction(b *testing.B) {
 	b.StopTimer()
 	buildBenchOrderBook()
 	logging.SetLevel(logging.WARNING, "go-auction")
 	b.StartTimer()
 	for i := 0; i < b.N; i++ {
-		gotLast, vol, gotVolRemain := callAuction("cu1908", pclose)
+		gotLast, vol, gotVolRemain := CallAuction("cu1908", pclose)
 		if i == 0 {
 			b.Logf("callAuction price:%d, volume:%d, remainVol:%d", gotLast, vol, gotVolRemain)
 		}
 	}
 }
 
-func Benchmark_callAuctionNew(b *testing.B) {
+func BenchmarkMatchCrossOld(b *testing.B) {
 	b.StopTimer()
 	buildBenchOrderBook()
 	logging.SetLevel(logging.WARNING, "go-auction")
 	b.StartTimer()
 	for i := 0; i < b.N; i++ {
-		gotLast, vol, gotVolRemain := callAuctionNew("cu1908", pclose)
+		gotLast, vol, gotVolRemain := MatchCrossOld("cu1908", pclose)
 		if i == 0 {
-			b.Logf("callAuction price:%d, volume:%d, remainVol:%d", gotLast, vol, gotVolRemain)
+			b.Logf("MatchCrossOld price:%d, volume:%d, remainVol:%d", gotLast, vol, gotVolRemain)
+		}
+	}
+}
+
+func BenchmarkMatchCross(b *testing.B) {
+	b.StopTimer()
+	buildBenchOrderBook()
+	logging.SetLevel(logging.WARNING, "go-auction")
+	b.StartTimer()
+	for i := 0; i < b.N; i++ {
+		gotLast, vol, gotVolRemain := MatchCross("cu1908", pclose)
+		if i == 0 {
+			b.Logf("MatchCross price:%d, volume:%d, remainVol:%d", gotLast, vol, gotVolRemain)
 		}
 	}
 }
