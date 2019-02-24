@@ -582,13 +582,13 @@ func MatchCross(sym string, pclose int) (last int, maxVol, volRemain int) {
 				aP = 0
 			}
 			if bP < bestAsk {
-				aP = 0
+				bP = 0
 			}
 			if bP == 0 && aP == 0 {
-				if aP > pclose {
-					last = aP
-				} else if bP < pclose {
-					last = bP
+				if oaP > pclose {
+					last = oaP
+				} else if obP < pclose {
+					last = obP
 				} else {
 					last = pclose
 				}
