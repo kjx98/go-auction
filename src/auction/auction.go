@@ -465,24 +465,41 @@ func MatchCrossOld(sym string, pclose int) (last int, maxVol, volRemain int) {
 			volRemain = 0
 			if bP == aP {
 				last = bP
-			} else if aP > pclose {
-				last = aP
-			} else if bP < pclose {
-				last = bP
-			} else {
-				last = pclose
+				break
 			}
 			i++
 			j++
-			if i >= len(bidsQ) || j >= len(asksQ) {
+			if i >= len(bidsQ) && j >= len(asksQ) {
+				if aP > pclose {
+					last = aP
+				} else if bP < pclose {
+					last = bP
+				} else {
+					last = pclose
+				}
 				aP = 0
 				bP = 0
+				break
+			}
+			if i >= len(bidsQ) {
+				last = aP
+				bP = 0
+				break
+			}
+			if j >= len(asksQ) {
+				last = bP
+				aP = 0
 				break
 			}
 			bidVol = bidsQ[i].volume
 			bP = bidsQ[i].price
 			askVol = asksQ[j].volume
 			aP = asksQ[j].price
+			if bidVol <= askVol {
+				last = bP
+			} else {
+				last = aP
+			}
 		}
 		log.Infof("update MatchCrossOld price:%d volume:%d(left: %d)", last, maxVol, volRemain)
 	}
@@ -493,6 +510,7 @@ func MatchCrossOld(sym string, pclose int) (last int, maxVol, volRemain int) {
 func MatchCross(sym string, pclose int) (last int, maxVol, volRemain int) {
 	var bidIter, askIter *avl.Iterator
 	var bP, aP int
+	var bestBid, bestAsk int
 	var bidVol, askVol int
 	getPriceVol := func(it *avl.Iterator) (price, vol int) {
 		if node := it.Get(); node != nil {
@@ -526,6 +544,7 @@ func MatchCross(sym string, pclose int) (last int, maxVol, volRemain int) {
 	if bP < aP || aP == 0 {
 		return
 	}
+	bestBid, bestAsk = bP, aP
 	log.Infof("BBS: %d/%d", bP, aP)
 
 	for aP != 0 && bP >= aP {
@@ -534,7 +553,7 @@ func MatchCross(sym string, pclose int) (last int, maxVol, volRemain int) {
 			maxVol += askVol
 			bidVol -= askVol
 			volRemain = bidVol
-			last = aP
+			last = bP
 			aP, askVol = getPriceVol(askIter)
 			if aP == 0 {
 				break
@@ -543,7 +562,7 @@ func MatchCross(sym string, pclose int) (last int, maxVol, volRemain int) {
 			maxVol += bidVol
 			askVol -= bidVol
 			volRemain = askVol
-			last = bP
+			last = aP
 			bP, bidVol = getPriceVol(bidIter)
 			if bP == 0 {
 				break
@@ -553,42 +572,60 @@ func MatchCross(sym string, pclose int) (last int, maxVol, volRemain int) {
 			volRemain = 0
 			if bP == aP {
 				last = bP
-			} else if aP > pclose {
-				last = aP
-			} else if bP < pclose {
-				last = bP
-			} else {
-				last = pclose
-			}
-			aP, askVol = getPriceVol(askIter)
-			bP, bidVol = getPriceVol(bidIter)
-			if bP == 0 || aP == 0 {
 				break
 			}
+			oaP := aP
+			obP := bP
+			aP, askVol = getPriceVol(askIter)
+			bP, bidVol = getPriceVol(bidIter)
+			if aP > bestBid {
+				aP = 0
+			}
+			if bP < bestAsk {
+				aP = 0
+			}
+			if bP == 0 && aP == 0 {
+				if aP > pclose {
+					last = aP
+				} else if bP < pclose {
+					last = bP
+				} else {
+					last = pclose
+				}
+				break
+			}
+			if bP == 0 {
+				last = oaP
+			}
+			if aP == 0 {
+				last = obP
+			}
 		}
-		log.Infof("update MatchCross price:%d volume:%d(left: %d)", last, maxVol, volRemain)
+		log.Infof("update MatchCross price:%d %d/%d volume:%d(left: %d)", last, bP, aP, maxVol, volRemain)
 	}
-	// fix volRemain
-	if bP == last {
-		// fix pr
-		if volRemain == 0 {
-			volRemain = bidVol
+	/*
+		// fix volRemain
+		if bP == last {
+			// fix pr
+			if volRemain == 0 {
+				volRemain = bidVol
+			}
+			log.Infof("fix bidVol, volRemain, last/price: %d/%d", last, bP)
+			for pr, vv := getPriceVol(bidIter); pr == bP; pr, vv = getPriceVol(bidIter) {
+				volRemain += vv
+			}
 		}
-		log.Infof("fix bidVol, volRemain, last/price: %d/%d", last, bP)
-		for pr, vv := getPriceVol(bidIter); pr == bP; pr, vv = getPriceVol(bidIter) {
-			volRemain += vv
+		if aP == last {
+			// fix pr
+			if volRemain == 0 {
+				volRemain = askVol
+			}
+			log.Infof("fix askVol, volRemain, last/price: %d/%d", last, aP)
+			for pr, vv := getPriceVol(askIter); pr == aP; pr, vv = getPriceVol(askIter) {
+				volRemain += vv
+			}
 		}
-	}
-	if aP == last {
-		// fix pr
-		if volRemain == 0 {
-			volRemain = askVol
-		}
-		log.Infof("fix askVol, volRemain, last/price: %d/%d", last, aP)
-		for pr, vv := getPriceVol(askIter); pr == aP; pr, vv = getPriceVol(askIter) {
-			volRemain += vv
-		}
-	}
+	*/
 	log.Infof("MatchCross end, bp/ap: %d/%d", bP, aP)
 	return
 }

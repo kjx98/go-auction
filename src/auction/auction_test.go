@@ -173,7 +173,7 @@ func TestMatchCrossOld(t *testing.T) {
 		wantVolRemain int
 	}{
 		// TODO: Add test cases.
-		{"MatchCrossOld test1", args{"cu1906", 40000}, 43500, 75, 0},
+		{"MatchCrossOld test1", args{"cu1906", 40000}, 43900, 75, 0},
 		{"MatchCrossOld test1", args{"cu1906", 50000}, 43900, 75, 0},
 	}
 	cleanupOrderBook("cu1906")
