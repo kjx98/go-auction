@@ -312,8 +312,8 @@ func tryMatch(ti string, isBuy bool, last int) (volume, nextPrice int) {
 				if v.price >= last {
 					// match
 					volume += v.Qty
-					nextPrice = v.price
 				} else {
+					nextPrice = v.price
 					break
 				}
 			} else {
@@ -359,22 +359,56 @@ func CallAuction(sym string, pclose int) (last int, maxVol, volRemain int) {
 			last = price
 			volRemain = remVol
 		} else {
+			log.Info("no way go here, scanup cant duplicate maxVol")
+			break
+		}
+		log.Infof("update callAuction price:%d volume:%d(left: %d) nextP:%d", last, maxVol, volRemain, nextP)
+	}
+	// scan down
+	tmpLast := last
+	log.Infof("scan down %d to %d", bestBid, tmpLast)
+	for price := bestBid; price != 0 && price > tmpLast; price = nextP {
+		bVol, bP := tryMatch(sym, true, price)
+		aVol, _ := tryMatch(sym, false, price)
+		nextP = bP
+		if bVol > aVol {
+			remVol = bVol - aVol
+			vol = aVol
+		} else {
+			remVol = aVol - bVol
+			vol = bVol
+		}
+		if vol < maxVol {
+			continue
+		}
+		if vol > maxVol {
+			maxVol = vol
+			last = price
+			volRemain = remVol
+			log.Info("no way go here, scandown new maxVol")
+		} else {
 			if remVol < volRemain {
 				volRemain = remVol
 				last = price
 			} else if remVol == volRemain {
-				// last = middle last/price/pclose
-				if last >= pclose {
-					// unchange
-				} else if pclose >= price {
+				if bVol > aVol {
 					last = price
-				} else {
-					last = pclose
+				} else if bVol == aVol {
+					// last = middle last/price/pclose
+					if last >= pclose {
+						// unchange
+					} else if pclose >= price {
+						last = price
+					} else {
+						last = pclose
+					}
 				}
 			}
 		}
-		log.Infof("update callAuction price:%d volume:%d(left: %d) nextP:%d", last, maxVol, volRemain, nextP)
+		log.Infof("update callAuction (down) price:%d volume:%d(left: %d) nextP:%d", last, maxVol, volRemain, nextP)
+		//break
 	}
+	log.Infof("callAuction end price:%d volume:%d(left: %d)", last, maxVol, volRemain)
 	return
 }
 
@@ -440,7 +474,7 @@ func MatchCrossOld(sym string, pclose int) (last int, maxVol, volRemain int) {
 			maxVol += askVol
 			bidVol -= askVol
 			volRemain = bidVol
-			last = aP
+			last = bP
 			j++
 			if j >= len(asksQ) {
 				aP = 0
@@ -452,7 +486,7 @@ func MatchCrossOld(sym string, pclose int) (last int, maxVol, volRemain int) {
 			maxVol += bidVol
 			askVol -= bidVol
 			volRemain = askVol
-			last = bP
+			last = aP
 			i++
 			if i >= len(bidsQ) {
 				bP = 0
