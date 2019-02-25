@@ -217,9 +217,16 @@ func dumpSimOrderStats() {
 	log.Infof("Total unfilled orders: %d", totalOrders)
 }
 
+func OrderBookLen(sym string) (bidLen, askLen int) {
+	if orB, ok := simOrderBook[sym]; ok {
+		bidLen, askLen = orB.bids.Len(), orB.asks.Len()
+	}
+	return
+}
+
 var simLogMatchs int
 
-func simMatchOrder(ti string, isBuy bool, last, volume int) {
+func MatchOrder(sym string, isBuy bool, last, volume int) {
 	setFill := func(or *simOrderType, last int, vol int) (volFilled int) {
 		if vol >= or.Qty {
 			volFilled = or.Qty
@@ -234,7 +241,7 @@ func simMatchOrder(ti string, isBuy bool, last, volume int) {
 		return
 	}
 
-	if orB, ok := simOrderBook[ti]; ok {
+	if orB, ok := simOrderBook[sym]; ok {
 		var orderQ *avl.Tree
 		if isBuy {
 			// fill Buy orders

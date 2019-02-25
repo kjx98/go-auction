@@ -40,8 +40,8 @@ func buildOrderBook() {
 	// build cu1908 orderBook
 	et := time.Now()
 	du := et.Sub(tt)
-	log.Infof("Build rand %d orders cost %.3f seconds, %.2f O/s", count,
-		du.Seconds(), float64(count)/du.Seconds())
+	log.Infof("Build rand %d orders cost %.3f ms, %.2f O/s", count,
+		du.Seconds()*1000.0, float64(count)/du.Seconds())
 }
 
 func loadSideOrders(fileN string, isBuy bool) (cnt int) {
@@ -137,6 +137,8 @@ func main() {
 	} else {
 		buildOrderBook()
 	}
+	bLen, aLen := auction.OrderBookLen(instr)
+	fmt.Printf("集合竞价前报单簿, bid QLen: %d, ask QLen: %d\n", bLen, aLen)
 	tt := time.Now()
 	var last, volume, remain int
 	switch algo {
@@ -147,12 +149,18 @@ func main() {
 	case 3:
 		last, volume, remain = auction.CallAuction(instr, pclose)
 	}
-	et := time.Now()
-	du := et.Sub(tt)
-	fmt.Printf("Auction Algo %d match %d orders cost %.3f seconds, %.2f Ops\n",
-		algo, count, du.Seconds(), float64(count)/du.Seconds())
+	du := time.Now().Sub(tt)
+	fmt.Printf("Auction Algo %d match %d orders cost %.3f ms, %.2f Ops\n",
+		algo, count, du.Seconds()*1000.0, float64(count)/du.Seconds())
 	fmt.Printf("CallAuction Price: %d, Volume: %d, Remain Volume: %d\n",
 		last, volume, remain)
+	tt = time.Now()
+	auction.MatchOrder(instr, true, last, volume)
+	auction.MatchOrder(instr, false, last, volume)
+	du = time.Now().Sub(tt)
+	fmt.Printf("生成成交单耗时: %.3f ms\n", du.Seconds()*1000.0)
+	bLen, aLen = auction.OrderBookLen(instr)
+	fmt.Printf("集合竞价后报单簿, bid QLen: %d, ask QLen: %d\n", bLen, aLen)
 }
 
 //  `%{color}%{time:15:04:05.000} %{shortfunc} ▶ %{level:.4s} %{id:03x}%{color:reset} %{message}`
