@@ -46,18 +46,34 @@ func buildOrderBook() {
 
 func loadSideOrders(fileN string, isBuy bool) (cnt int) {
 	if fd, err := os.Open(fileN); err != nil {
+		log.Info("open", fileN, " error:", err)
+	} else {
 		defer fd.Close()
 		rd := csv.NewReader(fd)
+		tt := time.Now()
+		lineCnt := 0
 		if lines, err := rd.ReadAll(); err == nil {
+			lineCnt = len(lines)
+			prices := make([]int, lineCnt)
+			vols := make([]int, lineCnt)
 			for _, line := range lines {
 				if len(line) < 3 {
 					continue
 				}
-				pr := to.Int(line[1])
-				vol := to.Int(line[2])
-				auction.SendOrder(instr, isBuy, vol, pr)
+				prices[cnt] = to.Int(line[1])
+				vols[cnt] = to.Int(line[2])
 				cnt++
 			}
+			du := time.Now().Sub(tt)
+			log.Infof("Read %s orders cost %.3f seconds", fileN, du.Seconds())
+			tt = time.Now()
+			for i := 0; i < cnt; i++ {
+				vol := vols[i]
+				pr := prices[i]
+				auction.SendOrder(instr, isBuy, vol, pr)
+			}
+			du = time.Now().Sub(tt)
+			log.Infof("Insert %d orders cost %.3f seconds", cnt, du.Seconds())
 		}
 	}
 	return
@@ -133,7 +149,7 @@ func main() {
 	}
 	et := time.Now()
 	du := et.Sub(tt)
-	fmt.Printf("Auction Algo %d match %d orders cost %.3f seconds, %f Ops\n",
+	fmt.Printf("Auction Algo %d match %d orders cost %.3f seconds, %.2f Ops\n",
 		algo, count, du.Seconds(), float64(count)/du.Seconds())
 	fmt.Printf("CallAuction Price: %d, Volume: %d, Remain Volume: %d\n",
 		last, volume, remain)

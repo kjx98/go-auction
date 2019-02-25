@@ -210,10 +210,10 @@ func TestMatchCross(t *testing.T) {
 		{"MatchCross test2", args{"cu1906", 50000}, 1, 43900, 75, 0},
 		{"MatchCross test3", args{"cu1906", 40000}, 2, 43500, 75, 0},
 		{"MatchCross test4", args{"cu1906", 50000}, 2, 43900, 75, 0},
-		{"MatchCross test5", args{"cu1906", 40000}, 3, 43500, 65, 10},
-		{"MatchCross test6", args{"cu1906", 50000}, 3, 43500, 65, 10},
-		{"MatchCross test7", args{"cu1906", 40000}, 4, 43900, 70, 5},
-		{"MatchCross test8", args{"cu1906", 50000}, 4, 43900, 70, 5},
+		{"MatchCross test5", args{"cu1906", 40000}, 3, 43900, 65, 10},
+		{"MatchCross test6", args{"cu1906", 50000}, 3, 43900, 65, 10},
+		{"MatchCross test7", args{"cu1906", 40000}, 4, 43500, 70, 5},
+		{"MatchCross test8", args{"cu1906", 50000}, 4, 43500, 70, 5},
 	}
 
 	tdNo := 0

@@ -19,13 +19,18 @@ MAKEFILE=GNUmakefile
 
 # We Use Compact Memory Model
 
-all: bin/auction
+all: bin/auction bin/auction.exe
 	@[ -d bin ] || exit
 
 bin/auction:	cmd/auction/main.go
 	@[ -d bin ] || mkdir bin
 	@go build -o $@ cmd/auction/main.go
 	@strip $@ || echo "auction OK"
+
+bin/auction.exe:	cmd/auction/main.go
+	@[ -d bin ] || mkdir bin
+	GOOS=windows GOARCH=amd64 go build -o $@ cmd/auction/main.go
+	#x86_64-w64-mingw32-strip $@
 
 clean:
 

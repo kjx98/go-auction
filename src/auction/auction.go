@@ -391,7 +391,7 @@ func CallAuction(sym string, pclose int) (last int, maxVol, volRemain int) {
 				volRemain = remVol
 				last = price
 			} else if remVol == volRemain {
-				if bVol > aVol {
+				if bVol < aVol {
 					last = price
 				} else if bVol == aVol {
 					// last = middle last/price/pclose
@@ -474,7 +474,7 @@ func MatchCrossOld(sym string, pclose int) (last int, maxVol, volRemain int) {
 			maxVol += askVol
 			bidVol -= askVol
 			volRemain = bidVol
-			last = bP
+			last = aP
 			j++
 			if j >= len(asksQ) {
 				aP = 0
@@ -486,7 +486,7 @@ func MatchCrossOld(sym string, pclose int) (last int, maxVol, volRemain int) {
 			maxVol += bidVol
 			askVol -= bidVol
 			volRemain = askVol
-			last = aP
+			last = bP
 			i++
 			if i >= len(bidsQ) {
 				bP = 0
@@ -587,7 +587,7 @@ func MatchCross(sym string, pclose int) (last int, maxVol, volRemain int) {
 			maxVol += askVol
 			bidVol -= askVol
 			volRemain = bidVol
-			last = bP
+			last = aP
 			aP, askVol = getPriceVol(askIter)
 			if aP == 0 {
 				break
@@ -596,7 +596,7 @@ func MatchCross(sym string, pclose int) (last int, maxVol, volRemain int) {
 			maxVol += bidVol
 			askVol -= bidVol
 			volRemain = askVol
-			last = aP
+			last = bP
 			bP, bidVol = getPriceVol(bidIter)
 			if bP == 0 {
 				break
