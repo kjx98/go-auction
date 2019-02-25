@@ -32,6 +32,9 @@ bin/auction.exe:	cmd/auction/main.go
 	GOOS=windows GOARCH=amd64 go build -o $@ cmd/auction/main.go
 	#x86_64-w64-mingw32-strip $@
 
+test:
+	@(cd src/auction;go test )
+
 clean:
 
 distclean: clean
