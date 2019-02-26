@@ -142,6 +142,11 @@ func main() {
 	tt := time.Now()
 	var last, volume, remain int
 	switch algo {
+	case 0:
+		last, volume, remain = auction.MatchCrossFill(instr, pclose)
+	default:
+		algo = 1
+		fallthrough
 	case 1:
 		last, volume, remain = auction.MatchCross(instr, pclose)
 	case 2:
@@ -154,11 +159,14 @@ func main() {
 		algo, count, du.Seconds()*1000.0, float64(count)/du.Seconds())
 	fmt.Printf("CallAuction Price: %d, Volume: %d, Remain Volume: %d\n",
 		last, volume, remain)
-	tt = time.Now()
-	auction.MatchOrder(instr, true, last, volume)
-	auction.MatchOrder(instr, false, last, volume)
-	du = time.Now().Sub(tt)
-	fmt.Printf("生成成交单耗时: %.3f ms\n", du.Seconds()*1000.0)
+	if algo > 0 {
+		tt = time.Now()
+		auction.MatchOrder(instr, true, last, volume)
+		auction.MatchOrder(instr, false, last, volume)
+		du = time.Now().Sub(tt)
+		fmt.Printf("生成成交单耗时: %.3f ms\n", du.Seconds()*1000.0)
+	}
+
 	bLen, aLen = auction.OrderBookLen(instr)
 	fmt.Printf("集合竞价后报单簿, bid QLen: %d, ask QLen: %d\n", bLen, aLen)
 }

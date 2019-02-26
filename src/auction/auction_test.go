@@ -53,14 +53,26 @@ var orders3 = []orderArgs{
 var orders4 = []orderArgs{
 	{"cu1906", true, 20, 43000},
 	{"cu1906", true, 50, 44000},
-	{"cu1906", true, 25, 43900},
+	{"cu1906", true, 20, 43900},
+	{"cu1906", true, 30, 43900},
 	{"cu1906", false, 10, 45000},
 	{"cu1906", false, 40, 43500},
 	{"cu1906", false, 10, 43200},
 	{"cu1906", false, 20, 43200},
 }
 
-var orderSS = [][]orderArgs{orders1, orders2, orders3, orders4}
+var orders5 = []orderArgs{
+	{"cu1906", true, 20, 43000},
+	{"cu1906", true, 50, 44000},
+	{"cu1906", true, 20, 43900},
+	{"cu1906", false, 10, 45000},
+	{"cu1906", false, 15, 43500},
+	{"cu1906", false, 40, 43500},
+	{"cu1906", false, 10, 43200},
+	{"cu1906", false, 20, 43200},
+}
+
+var orderSS = [][]orderArgs{orders1, orders2, orders3, orders4, orders5}
 
 func buildOrBook(orders []orderArgs) {
 	for _, or := range orders {
@@ -212,8 +224,10 @@ func TestMatchCross(t *testing.T) {
 		{"MatchCross test4", args{"cu1906", 50000}, 2, 43900, 75, 0},
 		{"MatchCross test5", args{"cu1906", 40000}, 3, 43900, 65, 10},
 		{"MatchCross test6", args{"cu1906", 50000}, 3, 43900, 65, 10},
-		{"MatchCross test7", args{"cu1906", 40000}, 4, 43500, 70, 5},
-		{"MatchCross test8", args{"cu1906", 50000}, 4, 43500, 70, 5},
+		{"MatchCross test7", args{"cu1906", 40000}, 4, 43500, 70, 30},
+		{"MatchCross test8", args{"cu1906", 50000}, 4, 43500, 70, 30},
+		{"MatchCross test9", args{"cu1906", 40000}, 5, 43900, 70, 15},
+		{"MatchCross test10", args{"cu1906", 50000}, 5, 43900, 70, 15},
 	}
 
 	tdNo := 0
@@ -257,6 +271,52 @@ func TestMatchCross(t *testing.T) {
 			}
 			if gotVolRemain != tt.wantVolRemain {
 				t.Errorf("MatchCross() gotVolRemain = %v, want %v", gotVolRemain, tt.wantVolRemain)
+			}
+		})
+	}
+}
+
+func TestMatchCrossFill(t *testing.T) {
+	type args struct {
+		sym    string
+		pclose int
+	}
+	tests := []struct {
+		name          string
+		args          args
+		dataNo        int
+		wantLast      int
+		wantMaxVol    int
+		wantVolRemain int
+	}{
+		// TODO: Add test cases.
+		{"MatchCross test1", args{"cu1906", 40000}, 1, 43900, 75, 0},
+		{"MatchCross test2", args{"cu1906", 50000}, 1, 43900, 75, 0},
+		{"MatchCross test3", args{"cu1906", 40000}, 2, 43500, 75, 0},
+		{"MatchCross test4", args{"cu1906", 50000}, 2, 43900, 75, 0},
+		{"MatchCross test5", args{"cu1906", 40000}, 3, 43900, 65, 10},
+		{"MatchCross test6", args{"cu1906", 50000}, 3, 43900, 65, 10},
+		{"MatchCross test7", args{"cu1906", 40000}, 4, 43500, 70, 30},
+		{"MatchCross test8", args{"cu1906", 50000}, 4, 43500, 70, 30},
+		{"MatchCross test9", args{"cu1906", 40000}, 5, 43900, 70, 15},
+		{"MatchCross test10", args{"cu1906", 50000}, 5, 43900, 70, 15},
+	}
+
+	//buildOrBook(orders1)
+	for _, tt := range tests {
+		tdNo := tt.dataNo
+		cleanupOrderBook("cu1906")
+		buildOrBook(orderSS[tdNo-1])
+		t.Run(tt.name, func(t *testing.T) {
+			gotLast, gotMaxVol, gotVolRemain := MatchCrossFill(tt.args.sym, tt.args.pclose)
+			if gotLast != tt.wantLast {
+				t.Errorf("MatchCrossFill() gotLast = %v, want %v", gotLast, tt.wantLast)
+			}
+			if gotMaxVol != tt.wantMaxVol {
+				t.Errorf("MatchCrossFill() gotMaxVol = %v, want %v", gotMaxVol, tt.wantMaxVol)
+			}
+			if gotVolRemain != tt.wantVolRemain {
+				t.Errorf("MatchCrossFill() gotVolRemain = %v, want %v", gotVolRemain, tt.wantVolRemain)
 			}
 		})
 	}
