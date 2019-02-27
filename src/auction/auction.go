@@ -29,6 +29,11 @@ func (or *simOrderType) Dir() string {
 	return "sell"
 }
 
+const maxOrders = 20000000
+
+var orderNo int
+var simOrders [maxOrders]*simOrderType
+
 var (
 	errNoOrder     = errors.New("No such order")
 	errNoOrderBook = errors.New("no OrderBook")
@@ -809,23 +814,23 @@ func MatchCrossFill(sym string, pclose int) (last int, maxVol, volRemain int) {
 	return
 }
 
-var orderNo int
-var simOrders = map[int]*simOrderType{}
-
 func SendOrder(sym string, bBuy bool, qty int, prc int) int {
-	orderNo++
-	var or = simOrderType{Symbol: sym, oid: orderNo, price: prc, Qty: qty, bBuy: bBuy}
+	if orderNo >= maxOrders {
+		return 0
+	}
+	var or = simOrderType{Symbol: sym, oid: orderNo + 1, price: prc, Qty: qty, bBuy: bBuy}
 	simOrders[orderNo] = &or
+	orderNo++
 	// put to orderBook
 	simInsertOrder(&or)
 	return orderNo
 }
 
 func CancelOrder(oid int) error {
-	or, ok := simOrders[oid]
-	if !ok {
+	if oid <= 0 || oid > orderNo {
 		return errNoOrder
 	}
+	or := simOrders[oid-1]
 	simRemoveOrder(or)
 	return nil
 }
