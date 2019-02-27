@@ -307,7 +307,7 @@ func getBestPrice(ti string, isBuy bool) int {
 	return 0
 }
 
-func buildOrBk(sym string) (bids, asks []*simOrderType) {
+func BuildOrBk(sym string) (bids, asks []*simOrderType) {
 	if orB, ok := simOrderBook[sym]; ok {
 		bids = make([]*simOrderType, orB.bids.Len())
 		it := orB.bids.Iterator(avl.Forward)
@@ -327,7 +327,7 @@ func buildOrBk(sym string) (bids, asks []*simOrderType) {
 	return
 }
 
-func CallAuction(sym string, pclose int) (last int, maxVol, volRemain int) {
+func CallAuction(bids, asks []*simOrderType, pclose int) (last int, maxVol, volRemain int) {
 	tryMatch := func(orders []*simOrderType, isBuy bool, last int) (volume, nextPrice int) {
 		if len(orders) > 0 {
 			for _, v := range orders {
@@ -352,9 +352,11 @@ func CallAuction(sym string, pclose int) (last int, maxVol, volRemain int) {
 		}
 		return
 	}
-	bids, asks := buildOrBk(sym)
-	bestBid := getBestPrice(sym, true)
-	bestAsk := getBestPrice(sym, false)
+	if len(bids) == 0 || len(asks) == 0 {
+		return
+	}
+	bestBid := bids[0].price //getBestPrice(sym, true)
+	bestAsk := asks[0].price //getBestPrice(sym, false)
 	if bestBid < bestAsk || bestAsk == 0 {
 		return
 	}

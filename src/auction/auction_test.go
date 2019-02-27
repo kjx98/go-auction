@@ -188,9 +188,11 @@ func TestCallAuction(t *testing.T) {
 	}
 	cleanupOrderBook("cu1906")
 	buildOrBook(orders1)
+
 	for _, tt := range tests {
+		bids, asks := BuildOrBk(tt.args.sym)
 		t.Run(tt.name, func(t *testing.T) {
-			gotLast, gotMaxVol, gotVolRemain := CallAuction(tt.args.sym, tt.args.pclose)
+			gotLast, gotMaxVol, gotVolRemain := CallAuction(bids, asks, tt.args.pclose)
 			if gotLast != tt.wantLast {
 				t.Errorf("callAuction() gotLast = %v, want %v", gotLast, tt.wantLast)
 			}
@@ -241,8 +243,9 @@ func TestMatchCross(t *testing.T) {
 				buildOrBook(orderSS[tdNo-1])
 			}
 		}
+		bids, asks := BuildOrBk(tt.args.sym)
 		t.Run(tt.name, func(t *testing.T) {
-			gotLast, gotMaxVol, gotVolRemain := CallAuction(tt.args.sym, tt.args.pclose)
+			gotLast, gotMaxVol, gotVolRemain := CallAuction(bids, asks, tt.args.pclose)
 			if gotLast != tt.wantLast {
 				t.Errorf("callAuction() gotLast = %v, want %v", gotLast, tt.wantLast)
 			}
@@ -352,9 +355,10 @@ func BenchmarkCallAuction(b *testing.B) {
 	b.StopTimer()
 	buildBenchOrderBook()
 	logging.SetLevel(logging.WARNING, "go-auction")
+	bids, asks := BuildOrBk("cu1908")
 	b.StartTimer()
 	for i := 0; i < b.N; i++ {
-		gotLast, vol, gotVolRemain := CallAuction("cu1908", pclose)
+		gotLast, vol, gotVolRemain := CallAuction(bids, asks, pclose)
 		if i == 0 {
 			b.Logf("callAuction price:%d, volume:%d, remainVol:%d", gotLast, vol, gotVolRemain)
 		}

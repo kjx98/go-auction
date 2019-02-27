@@ -152,7 +152,11 @@ func main() {
 	case 2:
 		last, volume, remain = auction.MatchCrossOld(instr, pclose)
 	case 3:
-		last, volume, remain = auction.CallAuction(instr, pclose)
+		bids, asks := auction.BuildOrBk(instr)
+		di := time.Now().Sub(tt)
+		fmt.Printf("Build bids, asks cost %.3f ms\n", di.Seconds()*1000)
+		tt = time.Now()
+		last, volume, remain = auction.CallAuction(bids, asks, pclose)
 	}
 	du := time.Now().Sub(tt)
 	fmt.Printf("Auction Algo %d match %d orders cost %.3f ms, %.2f Ops\n",
