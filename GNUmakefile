@@ -32,6 +32,11 @@ bin/auction.exe:	cmd/auction/main.go
 	GOOS=windows GOARCH=amd64 go build -o $@ cmd/auction/main.go
 	#x86_64-w64-mingw32-strip $@
 
+dtest: bin/auction
+	@for a in 0 1 2 3; do \
+	  GOGC=400 bin/auction -algo=$$a -long Data/long.txt -short Data/short.txt; \
+	done
+
 test:
 	@(cd src/auction;go test )
 
