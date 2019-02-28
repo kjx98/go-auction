@@ -35,6 +35,9 @@ bin/auction.exe:	cmd/auction/main.go
 test:
 	@(cd src/auction;go test )
 
+bench:
+	@(cd src/auction;go test -bench=Match)
+
 clean:
 
 distclean: clean

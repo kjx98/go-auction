@@ -34,12 +34,24 @@ const maxOrders = 20000000
 var orderNo int
 var simOrders [maxOrders]*simOrderType
 
+var simState int = StatePreAuction
+
+const (
+	StateIdle = iota
+	StatePreAuction
+	StateCallAuction
+	StateTrading
+	StateStop
+)
+
 var (
 	errNoOrder     = errors.New("No such order")
 	errNoOrderBook = errors.New("no OrderBook")
 	errCancelOrder = errors.New("can't cancel,canceled or filled")
 	errOrderSeq    = errors.New("Order price disorder")
 	errOrderNoSeq  = errors.New("Order same price No disorder")
+	errOrderFilled = errors.New("wrong order Filled volume")
+	errState       = errors.New("wrong trading state")
 )
 var log = logging.MustGetLogger("go-auction")
 
@@ -143,6 +155,10 @@ func verifySimOrderBook(sym string) error {
 	oid := 0
 	for node := iter.First(); node != nil; node = iter.Next() {
 		v := node.Value.(*simOrderType)
+		if v.Filled < 0 || v.Filled > v.Qty {
+			log.Errorf("Wrong Filled oid: %d Volume %d/%d", v.oid, v.Filled, v.Qty)
+			return errOrderFilled
+		}
 		if last == 0 {
 			last = v.price
 			oid = v.oid
@@ -235,12 +251,12 @@ var simLogMatchs int
 
 func MatchOrder(sym string, isBuy bool, last, volume int) {
 	setFill := func(or *simOrderType, last int, vol int) (volFilled int) {
-		if vol >= or.Qty {
-			volFilled = or.Qty
+		if vol >= or.Qty-or.Filled {
+			volFilled = or.Qty - or.Filled
 		} else {
 			volFilled = vol
 		}
-		or.Filled = volFilled
+		or.Filled += volFilled
 		or.PriceFilled = last
 		simLogMatchs++
 		if simLogMatchs <= 10 {
@@ -265,7 +281,14 @@ func MatchOrder(sym string, isBuy bool, last, volume int) {
 				if v.price >= last {
 					// match
 					volume -= setFill(v, last, volume)
-					orderQ.Remove(node)
+					if v.Filled >= v.Qty {
+						orderQ.Remove(node)
+					} else {
+						if volume > 0 {
+							log.Errorf("no way go here, Buy volume @%d remains", v.price)
+						}
+						break
+					}
 					if volume == 0 {
 						break
 					} else if volume < 0 {
@@ -279,7 +302,14 @@ func MatchOrder(sym string, isBuy bool, last, volume int) {
 				if v.price <= last {
 					// match
 					volume -= setFill(v, last, volume)
-					orderQ.Remove(node)
+					if v.Filled >= v.Qty {
+						orderQ.Remove(node)
+					} else {
+						if volume > 0 {
+							log.Errorf("no way go here, Sell volume @%d remains", v.price)
+						}
+						break
+					}
 					if volume == 0 {
 						break
 					} else if volume < 0 {
@@ -292,6 +322,81 @@ func MatchOrder(sym string, isBuy bool, last, volume int) {
 			}
 		}
 	}
+}
+
+func tryMatchOrderBook(order *simOrderType) (filled bool) {
+	setFill := func(or *simOrderType, last int, vol int) (volFilled int) {
+		if vol >= or.Qty-or.Filled {
+			volFilled = or.Qty - or.Filled
+		} else {
+			volFilled = vol
+		}
+		or.Filled += volFilled
+		or.PriceFilled = last
+		simLogMatchs++
+		if simLogMatchs <= 10 {
+			log.Infof("Filled No:%d %s %d %s %d(filled %d)", or.oid, or.Symbol,
+				or.price, or.Dir(), or.Qty, volFilled)
+		}
+		return
+	}
+
+	sym := order.Symbol
+	if orB, ok := simOrderBook[sym]; ok {
+		var orderQ *avl.Tree
+		isBuy := !order.bBuy
+		if isBuy {
+			// fill Buy orders
+			orderQ = orB.bids
+		} else {
+			orderQ = orB.asks
+		}
+		iter := orderQ.Iterator(avl.Forward)
+		for node := iter.First(); node != nil; node = iter.Next() {
+			v := node.Value.(*simOrderType)
+			volume := order.Qty
+			last := order.price
+			if isBuy {
+				if v.price >= last {
+					// match
+					vol := setFill(v, v.price, volume)
+					if v.Filled >= v.Qty {
+						orderQ.Remove(node)
+					}
+					setFill(order, v.price, vol)
+					volume -= vol
+					if volume == 0 {
+						filled = true
+						break
+					} else if volume < 0 {
+						log.Error("no Way go here")
+						break
+					}
+				} else {
+					break
+				}
+			} else {
+				if v.price <= last {
+					// match
+					vol := setFill(v, last, volume)
+					if v.Filled >= v.Qty {
+						orderQ.Remove(node)
+					}
+					volume -= vol
+					if volume == 0 {
+						filled = true
+						break
+					} else if volume < 0 {
+						log.Error("no Way go here")
+						break
+					}
+				} else {
+					break
+				}
+			}
+		}
+	}
+	return
 }
 
 func getBestPrice(ti string, isBuy bool) int {
@@ -339,7 +444,7 @@ func CallAuction(bids, asks []*simOrderType, pclose int) (last int, maxVol, volR
 				if isBuy {
 					if v.price >= last {
 						// match
-						volume += v.Qty
+						volume += v.Qty - v.Filled
 					} else {
 						nextPrice = v.price
 						break
@@ -347,7 +452,7 @@ func CallAuction(bids, asks []*simOrderType, pclose int) (last int, maxVol, volR
 				} else {
 					if v.price <= last {
 						// match
-						volume += v.Qty
+						volume += v.Qty - v.Filled
 					} else {
 						nextPrice = v.price
 						break
@@ -462,13 +567,13 @@ func MatchCrossOld(sym string, pclose int) (last int, maxVol, volRemain int) {
 			for node := iter.First(); node != nil; node = iter.Next() {
 				v := node.Value.(*simOrderType)
 				if v.price == last {
-					volume += v.Qty
+					volume += v.Qty - v.Filled
 					continue
 				}
 				if volume != 0 {
 					qs = append(qs, quoteLevel{price: last, volume: volume})
 				}
-				volume = v.Qty
+				volume = v.Qty - v.Filled
 				last = v.price
 				if isBuy {
 					if endPrice > last {
@@ -579,13 +684,13 @@ func MatchCross(sym string, pclose int) (last int, maxVol, volRemain int) {
 	getPriceVol := func(it *avl.Iterator) (price, vol int) {
 		if node := it.Get(); node != nil {
 			v := node.Value.(*simOrderType)
-			price, vol = v.price, v.Qty
+			price, vol = v.price, v.Qty-v.Filled
 			for node = it.Next(); node != nil; node = it.Next() {
 				v = node.Value.(*simOrderType)
 				if v.price != price {
 					break
 				}
-				vol += v.Qty
+				vol += v.Qty - v.Filled
 			}
 		} else {
 			price = 0
@@ -683,7 +788,7 @@ func MatchCrossFill(sym string, pclose int) (last int, maxVol, volRemain int) {
 	getPriceVol := func(node *avl.Node) (price, vol int, or *simOrderType) {
 		if node != nil {
 			v := node.Value.(*simOrderType)
-			price, vol = v.price, v.Qty
+			price, vol = v.price, v.Qty-v.Filled
 			or = v
 		}
 		return
@@ -818,15 +923,29 @@ func SendOrder(sym string, bBuy bool, qty int, prc int) int {
 	if orderNo >= maxOrders {
 		return 0
 	}
+	if simState == StateCallAuction || simState == StateStop {
+		// wrong trading state
+		return 0
+	}
 	var or = simOrderType{Symbol: sym, oid: orderNo + 1, price: prc, Qty: qty, bBuy: bBuy}
 	simOrders[orderNo] = &or
 	orderNo++
+	if simState == StateTrading {
+		// check match first
+		if tryMatchOrderBook(&or) {
+			// total filled
+			return orderNo
+		}
+	}
 	// put to orderBook
 	simInsertOrder(&or)
 	return orderNo
 }
 
 func CancelOrder(oid int) error {
+	if simState == StateCallAuction {
+		return errState
+	}
 	if oid <= 0 || oid > orderNo {
 		return errNoOrder
 	}
