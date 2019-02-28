@@ -41,7 +41,7 @@ test:
 	@(cd src/auction;go test )
 
 bench:
-	@(cd src/auction;go test -bench=Match)
+	@(cd src/auction;GOGC=400 go test -bench=Match)
 
 clean:
 
