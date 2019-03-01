@@ -14,12 +14,13 @@ import (
 )
 
 var (
-	orderFile string
-	longFile  string
-	shortFile string
-	count     int
-	algo      int
-	verbose   bool
+	orderFile   string
+	longFile    string
+	shortFile   string
+	count       int
+	algo        int
+	verbose     bool
+	testTrading bool
 )
 
 var log = logging.MustGetLogger("auction")
@@ -29,19 +30,24 @@ const (
 	instr = "cu1908"
 )
 
-func buildOrderBook() {
+func buildOrderBook(bTrading bool) {
 	tt := time.Now()
 	rand.Seed(tt.Unix())
 	for i := 0; i < count; i++ {
 		price := rand.Intn(2000)*10 + pclose - 10000
 		vol := rand.Intn(100) + 1
-		auction.SendOrder(instr, (i&1) != 0, vol, price)
+		auction.SendOrder(instr, (price&1) != 0, vol, price)
 	}
 	// build cu1908 orderBook
 	et := time.Now()
 	du := et.Sub(tt)
-	log.Infof("Build rand %d orders cost %.3f ms, %.2f O/s", count,
-		du.Seconds()*1000.0, float64(count)/du.Seconds())
+	if bTrading {
+		log.Infof("Feed/Trade rand %d orders cost %.3f ms, %.2f O/s", count,
+			du.Seconds()*1000.0, float64(count)/du.Seconds())
+	} else {
+		log.Infof("Build rand %d orders cost %.3f ms, %.2f O/s", count,
+			du.Seconds()*1000.0, float64(count)/du.Seconds())
+	}
 }
 
 func loadSideOrders(fileN string, isBuy bool) (cnt int) {
@@ -86,6 +92,7 @@ func main() {
 	flag.IntVar(&count, "count", 1000000, "orders count")
 	flag.IntVar(&algo, "algo", 1, "Call Auction Algorithm")
 	flag.BoolVar(&verbose, "v", false, "verbose log")
+	flag.BoolVar(&testTrading, "t", false, "test continuous trading")
 	if !verbose {
 		logging.SetLevel(logging.WARNING, "go-auction")
 	}
@@ -124,7 +131,7 @@ func main() {
 			log.Infof("Load %d orders cost %.3f seconds, %.2f O/s", rcnt, du.Seconds(),
 				float64(rcnt)/du.Seconds())
 		} else {
-			buildOrderBook()
+			buildOrderBook(false)
 		}
 	} else if longFile != "" && shortFile != "" {
 		tt := time.Now()
@@ -135,7 +142,7 @@ func main() {
 		log.Infof("Load %d long orders %d short orders cost %.3f seconds, %.2f O/s",
 			longCnt, shortCnt, du.Seconds(), float64(longCnt+shortCnt)/du.Seconds())
 	} else {
-		buildOrderBook()
+		buildOrderBook(false)
 	}
 	bLen, aLen := auction.OrderBookLen(instr)
 	fmt.Printf("集合竞价前报单簿, bid QLen: %d, ask QLen: %d\n", bLen, aLen)
@@ -173,6 +180,12 @@ func main() {
 
 	bLen, aLen = auction.OrderBookLen(instr)
 	fmt.Printf("集合竞价后报单簿, bid QLen: %d, ask QLen: %d\n", bLen, aLen)
+	if testTrading {
+		auction.MarketStart()
+		buildOrderBook(true)
+		bLen, aLen = auction.OrderBookLen(instr)
+		fmt.Printf("连续交易后报单簿, bid QLen: %d, ask QLen: %d\n", bLen, aLen)
+	}
 }
 
 //  `%{color}%{time:15:04:05.000} %{shortfunc} ▶ %{level:.4s} %{id:03x}%{color:reset} %{message}`

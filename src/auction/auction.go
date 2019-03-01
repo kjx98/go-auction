@@ -43,6 +43,14 @@ func cleanupOrderBook(sym string) {
 	}
 }
 
+func MarketStart() {
+	simState = StateTrading
+}
+
+func MarketStop() {
+	simState = StateStop
+}
+
 func simInsertOrder(or *simOrderType) {
 	orBook, ok := simOrderBook[or.Symbol]
 	if !ok {
