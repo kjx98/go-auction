@@ -1,6 +1,7 @@
 package auction
 
 import (
+	"fmt"
 	"math/rand"
 	"testing"
 	"time"
@@ -327,10 +328,11 @@ func TestMatchCrossFill(t *testing.T) {
 
 var pclose = 50000
 
-func buildBenchOrderBook() {
+func buildBenchOrderBook() int {
 	if ob, ok := simOrderBook["cu1908"]; ok {
-		log.Infof("orderBook bids: %d, asks: %d", ob.bids.Len(), ob.asks.Len())
-		return
+		bLen, aLen := ob.bookLen()
+		log.Infof("orderBook bids: %d, asks: %d", bLen, aLen)
+		return bLen + aLen
 	}
 	tt := time.Now()
 	rand.Seed(tt.Unix())
@@ -347,7 +349,44 @@ func buildBenchOrderBook() {
 	log.Infof("Build rand %d orders cost %.3f seconds, %g Ops", count, du.Seconds(),
 		float64(count)/du.Seconds())
 	if ob, ok := simOrderBook["cu1908"]; ok {
-		log.Infof("New orderBook bids: %d, asks: %d", ob.bids.Len(), ob.asks.Len())
+		bLen, aLen := ob.bookLen()
+		log.Infof("New orderBook bids: %d, asks: %d", bLen, aLen)
+	}
+	return count
+}
+
+func TestTradeContinue(t *testing.T) {
+	count := buildBenchOrderBook()
+	instr := "cu1908"
+	tt := time.Now()
+	logging.SetLevel(logging.WARNING, "go-auction")
+	last, vol, volRemain := MatchCross(instr, pclose)
+	du := time.Now().Sub(tt)
+	fmt.Printf("Auction match %d orders remain(%d) cost %.3f ms, %.2f Ops\n",
+		count, volRemain, du.Seconds()*1000.0, float64(count)/du.Seconds())
+	tt = time.Now()
+	MatchOrder(instr, true, last, vol)
+	MatchOrder(instr, false, last, vol)
+	du = time.Now().Sub(tt)
+	fmt.Printf("生成成交单耗时: %.3f ms\n", du.Seconds()*1000.0)
+	if ob, ok := simOrderBook["cu1908"]; ok {
+		bLen, aLen := ob.bookLen()
+		fmt.Printf("Afte MatchCross orderBook bids: %d, asks: %d\n", bLen, aLen)
+	}
+	tt = time.Now()
+	count = int(1e6)
+	simState = StateTrading
+	for i := 0; i < count; i++ {
+		price := rand.Intn(20000) + pclose - 10000
+		vol := rand.Intn(100) + 1
+		SendOrder("cu1908", (price&1) != 0, vol, price)
+	}
+	du = time.Now().Sub(tt)
+	fmt.Printf("连续交易 %d orders cost %.3f ms, %.2f Ops\n", count, du.Seconds()*1000.0,
+		float64(count)/du.Seconds())
+	if ob, ok := simOrderBook["cu1908"]; ok {
+		bLen, aLen := ob.bookLen()
+		fmt.Printf("连续交易后 orderBook bids: %d, asks: %d\n", bLen, aLen)
 	}
 }
 
