@@ -4,30 +4,8 @@ import (
 	"errors"
 	"os"
 
-	"github.com/kjx98/avl"
 	"github.com/op/go-logging"
 )
-
-type simOrderType struct {
-	oid         int
-	price       int
-	Symbol      string
-	bBuy        bool
-	Qty         int
-	Filled      int
-	PriceFilled int
-}
-
-type orderBook struct {
-	bids, asks *avl.Tree
-}
-
-func (or *simOrderType) Dir() string {
-	if or.bBuy {
-		return "buy"
-	}
-	return "sell"
-}
 
 const maxOrders = 20000000
 
@@ -55,61 +33,12 @@ var (
 )
 var log = logging.MustGetLogger("go-auction")
 
-func bidCompare(a, b interface{}) int {
-	ora, ok := a.(*simOrderType)
-	// maybe panic, if not simOrderType
-	if !ok {
-		return 0
-	}
-	orb, ok := b.(*simOrderType)
-	if !ok {
-		return 0
-	}
-	if ora.price == orb.price {
-		return ora.oid - orb.oid
-	}
-	if ora.price == 0 {
-		return -1
-	}
-	if orb.price == 0 {
-		return 1
-	}
-	// low price, low priority
-	return int(orb.price) - int(ora.price)
-}
-
-func askCompare(a, b interface{}) int {
-	ora, ok := a.(*simOrderType)
-	// maybe panic, if not simOrderType
-	if !ok {
-		return 0
-	}
-	orb, ok := b.(*simOrderType)
-	if !ok {
-		return 0
-	}
-	if ora.price == orb.price {
-		return ora.oid - orb.oid
-	}
-	// high price, low priority
-	return int(ora.price) - int(orb.price)
-}
-
 // orderBook map with symbol key
-var simOrderBook = map[string]orderBook{}
+var simOrderBook = map[string]*orderBook{}
 
 func cleanupOrderBook(sym string) {
-	destroyTree := func(tr *avl.Tree) {
-		iter := tr.Iterator(avl.Forward)
-		for node := iter.First(); node != nil; node = iter.Next() {
-			tr.Remove(node)
-		}
-	}
 	if orBook, ok := simOrderBook[sym]; ok {
-		destroyTree(orBook.bids)
-		destroyTree(orBook.asks)
-		orBook.bids = nil
-		orBook.asks = nil
+		orBook.cleanup()
 		delete(simOrderBook, sym)
 	}
 }
@@ -117,29 +46,15 @@ func cleanupOrderBook(sym string) {
 func simInsertOrder(or *simOrderType) {
 	orBook, ok := simOrderBook[or.Symbol]
 	if !ok {
-		orBook.bids = avl.New(bidCompare)
-		orBook.asks = avl.New(askCompare)
+		orBook = NewOrderBook()
 		simOrderBook[or.Symbol] = orBook
 	}
-	if or.bBuy {
-		// bid
-		orBook.bids.Insert(or)
-	} else {
-		orBook.asks.Insert(or)
-	}
+	orBook.insert(or)
 }
 
 func simRemoveOrder(or *simOrderType) {
 	if orBook, ok := simOrderBook[or.Symbol]; ok {
-		if or.bBuy {
-			if v := orBook.bids.Find(or); v != nil {
-				orBook.bids.Remove(v)
-			}
-		} else {
-			if v := orBook.asks.Find(or); v != nil {
-				orBook.asks.Remove(v)
-			}
-		}
+		orBook.delete(or)
 	}
 }
 
@@ -150,11 +65,9 @@ func verifySimOrderBook(sym string) error {
 		return errNoOrderBook
 	}
 	// validate bids
-	iter := orB.bids.Iterator(avl.Forward)
 	last := 0
 	oid := 0
-	for node := iter.First(); node != nil; node = iter.Next() {
-		v := node.Value.(*simOrderType)
+	for v := orB.getBestBid(); v != nil; v = orB.nextBid() {
 		if v.Filled < 0 || v.Filled > v.Qty {
 			log.Errorf("Wrong Filled oid: %d Volume %d/%d", v.oid, v.Filled, v.Qty)
 			return errOrderFilled
@@ -180,11 +93,9 @@ func verifySimOrderBook(sym string) error {
 		oid = v.oid
 	}
 	// validate asks
-	iter = orB.asks.Iterator(avl.Forward)
 	last = 0
 	oid = 0
-	for node := iter.First(); node != nil; node = iter.Next() {
-		v := node.Value.(*simOrderType)
+	for v := orB.getBestAsk(); v != nil; v = orB.nextAsk() {
 		if last == 0 {
 			last = v.price
 			oid = v.oid
@@ -215,16 +126,12 @@ func dumpSimOrderBook(sym string) {
 		return
 	}
 	log.Infof("Dump %s bids:", sym)
-	iter := orB.bids.Iterator(avl.Forward)
-	for node := iter.First(); node != nil; node = iter.Next() {
-		v := node.Value.(*simOrderType)
+	for v := orB.getBestBid(); v != nil; v = orB.nextBid() {
 		log.Infof(" No:%d %s %d %s %d", v.oid, v.Symbol, v.price,
 			v.Dir(), v.Qty)
 	}
 	log.Infof("Dump %s asks:", sym)
-	iter = orB.asks.Iterator(avl.Forward)
-	for node := iter.First(); node != nil; node = iter.Next() {
-		v := node.Value.(*simOrderType)
+	for v := orB.getBestAsk(); v != nil; v = orB.nextAsk() {
 		log.Infof(" No:%d %s %d %s %d", v.oid, v.Symbol, v.price,
 			v.Dir(), v.Qty)
 	}
@@ -234,7 +141,8 @@ func dumpSimOrderBook(sym string) {
 func dumpSimOrderStats() {
 	totalOrders := 0
 	for sym, orB := range simOrderBook {
-		log.Infof("%s Bid orders: %d, Ask orders: %d", sym, orB.bids.Len(), orB.asks.Len())
+		bidLen, askLen := orB.bookLen()
+		log.Infof("%s Bid orders: %d, Ask orders: %d", sym, bidLen, askLen)
 		totalOrders += orB.bids.Len() + orB.asks.Len()
 	}
 	log.Infof("Total unfilled orders: %d", totalOrders)
@@ -242,7 +150,7 @@ func dumpSimOrderStats() {
 
 func OrderBookLen(sym string) (bidLen, askLen int) {
 	if orB, ok := simOrderBook[sym]; ok {
-		bidLen, askLen = orB.bids.Len(), orB.asks.Len()
+		bidLen, askLen = orB.bookLen()
 	}
 	return
 }
@@ -267,22 +175,13 @@ func MatchOrder(sym string, isBuy bool, last, volume int) {
 	}
 
 	if orB, ok := simOrderBook[sym]; ok {
-		var orderQ *avl.Tree
-		if isBuy {
-			// fill Buy orders
-			orderQ = orB.bids
-		} else {
-			orderQ = orB.asks
-		}
-		iter := orderQ.Iterator(avl.Forward)
-		for node := iter.First(); node != nil; node = iter.Next() {
-			v := node.Value.(*simOrderType)
+		for v := orB.First(isBuy); v != nil; v = orB.Next(isBuy) {
 			if isBuy {
 				if v.price >= last {
 					// match
 					volume -= setFill(v, last, volume)
 					if v.Filled >= v.Qty {
-						orderQ.Remove(node)
+						orB.Remove(isBuy)
 					} else {
 						if volume > 0 {
 							log.Errorf("no way go here, Buy volume @%d remains", v.price)
@@ -303,7 +202,7 @@ func MatchOrder(sym string, isBuy bool, last, volume int) {
 					// match
 					volume -= setFill(v, last, volume)
 					if v.Filled >= v.Qty {
-						orderQ.Remove(node)
+						orB.Remove(isBuy)
 					} else {
 						if volume > 0 {
 							log.Errorf("no way go here, Sell volume @%d remains", v.price)
@@ -343,25 +242,16 @@ func tryMatchOrderBook(order *simOrderType) (filled bool) {
 
 	sym := order.Symbol
 	if orB, ok := simOrderBook[sym]; ok {
-		var orderQ *avl.Tree
 		isBuy := !order.bBuy
-		if isBuy {
-			// fill Buy orders
-			orderQ = orB.bids
-		} else {
-			orderQ = orB.asks
-		}
-		iter := orderQ.Iterator(avl.Forward)
-		for node := iter.First(); node != nil; node = iter.Next() {
-			v := node.Value.(*simOrderType)
-			volume := order.Qty
+		for v := orB.First(isBuy); v != nil; v = orB.Next(isBuy) {
+			volume := order.Qty - order.Filled
 			last := order.price
 			if isBuy {
 				if v.price >= last {
 					// match
 					vol := setFill(v, v.price, volume)
 					if v.Filled >= v.Qty {
-						orderQ.Remove(node)
+						orB.Remove(isBuy)
 					}
 					setFill(order, v.price, vol)
 					volume -= vol
@@ -380,7 +270,7 @@ func tryMatchOrderBook(order *simOrderType) (filled bool) {
 					// match
 					vol := setFill(v, last, volume)
 					if v.Filled >= v.Qty {
-						orderQ.Remove(node)
+						orB.Remove(isBuy)
 					}
 					volume -= vol
 					if volume == 0 {
@@ -401,16 +291,7 @@ func tryMatchOrderBook(order *simOrderType) (filled bool) {
 
 func getBestPrice(ti string, isBuy bool) int {
 	if orB, ok := simOrderBook[ti]; ok {
-		var orderQ *avl.Tree
-		if isBuy {
-			// fill Buy orders
-			orderQ = orB.bids
-		} else {
-			orderQ = orB.asks
-		}
-		iter := orderQ.Iterator(avl.Forward)
-		if node := iter.First(); node != nil {
-			v := node.Value.(*simOrderType)
+		if v := orB.First(isBuy); v != nil {
 			return v.price
 		}
 	}
@@ -419,17 +300,14 @@ func getBestPrice(ti string, isBuy bool) int {
 
 func BuildOrBk(sym string) (bids, asks []*simOrderType) {
 	if orB, ok := simOrderBook[sym]; ok {
-		bids = make([]*simOrderType, orB.bids.Len())
-		it := orB.bids.Iterator(avl.Forward)
-		for i, node := 0, it.First(); node != nil && i < len(bids); node = it.Next() {
-			v := node.Value.(*simOrderType)
+		bLen, aLen := orB.bookLen()
+		bids = make([]*simOrderType, bLen)
+		for i, v := 0, orB.First(true); v != nil && i < len(bids); v = orB.Next(true) {
 			bids[i] = v
 			i++
 		}
-		asks = make([]*simOrderType, orB.asks.Len())
-		it = orB.asks.Iterator(avl.Forward)
-		for i, node := 0, it.First(); node != nil && i < len(asks); node = it.Next() {
-			v := node.Value.(*simOrderType)
+		asks = make([]*simOrderType, aLen)
+		for i, v := 0, orB.First(false); v != nil && i < len(asks); v = orB.Next(false) {
 			asks[i] = v
 			i++
 		}
@@ -555,17 +433,8 @@ type quoteLevel struct {
 func MatchCrossOld(sym string, pclose int) (last int, maxVol, volRemain int) {
 	buildQuoteLevel := func(ti string, isBuy bool, last, endPrice int) (qs []quoteLevel) {
 		if orB, ok := simOrderBook[ti]; ok {
-			var orderQ *avl.Tree
-			if isBuy {
-				// fill Buy orders
-				orderQ = orB.bids
-			} else {
-				orderQ = orB.asks
-			}
-			iter := orderQ.Iterator(avl.Forward)
 			volume := 0
-			for node := iter.First(); node != nil; node = iter.Next() {
-				v := node.Value.(*simOrderType)
+			for v := orB.First(isBuy); v != nil; v = orB.Next(isBuy) {
 				if v.price == last {
 					volume += v.Qty - v.Filled
 					continue
@@ -677,16 +546,14 @@ func MatchCrossOld(sym string, pclose int) (last int, maxVol, volRemain int) {
 }
 
 func MatchCross(sym string, pclose int) (last int, maxVol, volRemain int) {
-	var bidIter, askIter *avl.Iterator
 	var bP, aP int
 	var bestBid, bestAsk int
 	var bidVol, askVol int
-	getPriceVol := func(it *avl.Iterator) (price, vol int) {
-		if node := it.Get(); node != nil {
-			v := node.Value.(*simOrderType)
+	var orB *orderBook
+	getPriceVol := func(isBuy bool) (price, vol int) {
+		if v := orB.Get(isBuy); v != nil {
 			price, vol = v.price, v.Qty-v.Filled
-			for node = it.Next(); node != nil; node = it.Next() {
-				v = node.Value.(*simOrderType)
+			for v = orB.Next(isBuy); v != nil; v = orB.Next(isBuy) {
 				if v.price != price {
 					break
 				}
@@ -697,16 +564,15 @@ func MatchCross(sym string, pclose int) (last int, maxVol, volRemain int) {
 		}
 		return
 	}
-	if orB, ok := simOrderBook[sym]; !ok {
+	if orBook, ok := simOrderBook[sym]; !ok {
 		return
 	} else {
-		bidIter = orB.bids.Iterator(avl.Forward)
-		if node := bidIter.First(); node != nil {
-			bP, bidVol = getPriceVol(bidIter)
+		orB = orBook
+		if v := orB.First(true); v != nil {
+			bP, bidVol = getPriceVol(true)
 		}
-		askIter = orB.asks.Iterator(avl.Forward)
-		if node := askIter.First(); node != nil {
-			aP, askVol = getPriceVol(askIter)
+		if v := orB.First(false); v != nil {
+			aP, askVol = getPriceVol(false)
 		}
 	}
 
@@ -723,7 +589,7 @@ func MatchCross(sym string, pclose int) (last int, maxVol, volRemain int) {
 			bidVol -= askVol
 			volRemain = bidVol
 			last = aP
-			aP, askVol = getPriceVol(askIter)
+			aP, askVol = getPriceVol(false)
 			if aP == 0 {
 				break
 			}
@@ -732,7 +598,7 @@ func MatchCross(sym string, pclose int) (last int, maxVol, volRemain int) {
 			askVol -= bidVol
 			volRemain = askVol
 			last = bP
-			bP, bidVol = getPriceVol(bidIter)
+			bP, bidVol = getPriceVol(true)
 			if bP == 0 {
 				break
 			}
@@ -746,8 +612,8 @@ func MatchCross(sym string, pclose int) (last int, maxVol, volRemain int) {
 			}
 			oaP := aP
 			obP := bP
-			aP, askVol = getPriceVol(askIter)
-			bP, bidVol = getPriceVol(bidIter)
+			aP, askVol = getPriceVol(false)
+			bP, bidVol = getPriceVol(true)
 			if aP > bestBid {
 				aP = 0
 			}
@@ -778,29 +644,25 @@ func MatchCross(sym string, pclose int) (last int, maxVol, volRemain int) {
 }
 
 func MatchCrossFill(sym string, pclose int) (last int, maxVol, volRemain int) {
-	var bidIter, askIter *avl.Iterator
-	var bidsTree, asksTree *avl.Tree
+	var orB *orderBook
 	var bidOr, askOr *simOrderType
 	var bP, aP, oaP, obP int
 	var bestBid, bestAsk int
 	var bidVol, askVol int
 	var ordersFilled = []*simOrderType{}
-	getPriceVol := func(node *avl.Node) (price, vol int, or *simOrderType) {
-		if node != nil {
-			v := node.Value.(*simOrderType)
+	getPriceVol := func(v *simOrderType) (price, vol int, or *simOrderType) {
+		if v != nil {
 			price, vol = v.price, v.Qty-v.Filled
 			or = v
 		}
 		return
 	}
-	if orB, ok := simOrderBook[sym]; !ok {
+	if orBook, ok := simOrderBook[sym]; !ok {
 		return
 	} else {
-		bidsTree, asksTree = orB.bids, orB.asks
-		bidIter = orB.bids.Iterator(avl.Forward)
-		bP, bidVol, bidOr = getPriceVol(bidIter.First())
-		askIter = orB.asks.Iterator(avl.Forward)
-		aP, askVol, askOr = getPriceVol(askIter.First())
+		orB = orBook
+		bP, bidVol, bidOr = getPriceVol(orB.First(true))
+		aP, askVol, askOr = getPriceVol(orB.First(false))
 	}
 
 	if bP < aP || aP == 0 {
@@ -819,8 +681,8 @@ func MatchCrossFill(sym string, pclose int) (last int, maxVol, volRemain int) {
 			bidOr.Filled += askVol
 			askOr.Filled += askVol
 			//ordersFilled = append(ordersFilled, askOr)
-			asksTree.Remove(askIter.Get())
-			aP, askVol, askOr = getPriceVol(askIter.Next())
+			orB.Remove(false)
+			aP, askVol, askOr = getPriceVol(orB.Next(false))
 		case bidVol < askVol:
 			maxVol += bidVol
 			askVol -= bidVol
@@ -829,21 +691,21 @@ func MatchCrossFill(sym string, pclose int) (last int, maxVol, volRemain int) {
 			bidOr.Filled += askVol
 			askOr.Filled += askVol
 			//ordersFilled = append(ordersFilled, bidOr)
-			bidsTree.Remove(bidIter.Get())
-			bP, bidVol, bidOr = getPriceVol(bidIter.Next())
+			orB.Remove(true)
+			bP, bidVol, bidOr = getPriceVol(orB.Next(true))
 		case bidVol == askVol:
 			maxVol += bidVol
 			volRemain = 0
 			bidOr.Filled += askVol
 			askOr.Filled += askVol
 			//ordersFilled = append(ordersFilled, bidOr)
-			bidsTree.Remove(bidIter.Get())
+			orB.Remove(true)
 			//ordersFilled = append(ordersFilled, askOr)
-			asksTree.Remove(askIter.Get())
+			orB.Remove(false)
 			oaP = aP
 			obP = bP
-			aP, askVol, askOr = getPriceVol(askIter.Next())
-			bP, bidVol, bidOr = getPriceVol(bidIter.Next())
+			aP, askVol, askOr = getPriceVol(orB.Next(false))
+			bP, bidVol, bidOr = getPriceVol(orB.Next(true))
 			if obP == oaP {
 				// maybe other bids or asks left
 				last = obP
@@ -883,7 +745,8 @@ func MatchCrossFill(sym string, pclose int) (last int, maxVol, volRemain int) {
 		log.Infof("update MatchCrossFill price:%d %d/%d volume:%d(left: %d)", last, bP, aP, maxVol, volRemain)
 	}
 	if last == 0 {
-		log.Warningf("Last is zero!! BS QLen: %d/%d", bidsTree.Len(), asksTree.Len())
+		bLen, aLen := orB.bookLen()
+		log.Warningf("Last is zero!! BS QLen: %d/%d", bLen, aLen)
 		return
 	}
 	// fix volRemain
@@ -897,7 +760,7 @@ func MatchCrossFill(sym string, pclose int) (last int, maxVol, volRemain int) {
 		fallthrough
 	case bP == last && volRemain != 0:
 		log.Infof("fix bidVol, volRemain, last/price: %d/%d", last, bP)
-		for pr, vv, _ := getPriceVol(bidIter.Next()); pr == bP; pr, vv, _ = getPriceVol(bidIter.Next()) {
+		for pr, vv, _ := getPriceVol(orB.Next(true)); pr == bP; pr, vv, _ = getPriceVol(orB.Next(true)) {
 			volRemain += vv
 		}
 	case obP == last && volRemain == 0:
@@ -909,7 +772,7 @@ func MatchCrossFill(sym string, pclose int) (last int, maxVol, volRemain int) {
 		fallthrough
 	case aP == last && volRemain != 0:
 		log.Infof("fix askVol, volRemain, last/price: %d/%d", last, aP)
-		for pr, vv, _ := getPriceVol(askIter.Next()); pr == aP; pr, vv, _ = getPriceVol(askIter.Next()) {
+		for pr, vv, _ := getPriceVol(orB.Next(false)); pr == aP; pr, vv, _ = getPriceVol(orB.Next(false)) {
 			volRemain += vv
 		}
 	}
