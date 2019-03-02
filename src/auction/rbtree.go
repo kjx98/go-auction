@@ -1,0 +1,3 @@
+// +build rbtree
+
+package auction

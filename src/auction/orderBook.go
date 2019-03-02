@@ -1,12 +1,8 @@
 package auction
 
-import (
-	"github.com/kjx98/avl"
-)
-
 type orderBook struct {
-	bids, asks   *avl.Tree
-	bidIt, askIt *avl.Iterator
+	bids, asks   *Tree
+	bidIt, askIt *Iterator
 }
 
 func bidCompare(a, b interface{}) int {
@@ -50,14 +46,8 @@ func askCompare(a, b interface{}) int {
 }
 
 func (orBook *orderBook) cleanup() {
-	destroyTree := func(tr *avl.Tree) {
-		iter := tr.Iterator(avl.Forward)
-		for node := iter.First(); node != nil; node = iter.Next() {
-			tr.Remove(node)
-		}
-	}
-	destroyTree(orBook.bids)
-	destroyTree(orBook.asks)
+	orBook.bids.destroy()
+	orBook.asks.destroy()
 	orBook.bids = nil
 	orBook.asks = nil
 }
@@ -77,13 +67,9 @@ func (orBook *orderBook) insert(or *simOrderType) {
 
 func (orBook *orderBook) delete(or *simOrderType) {
 	if or.bBuy {
-		if v := orBook.bids.Find(or); v != nil {
-			orBook.bids.Remove(v)
-		}
+		orBook.bids.Delete(or)
 	} else {
-		if v := orBook.asks.Find(or); v != nil {
-			orBook.asks.Remove(v)
-		}
+		orBook.asks.Delete(or)
 	}
 }
 
@@ -96,11 +82,9 @@ func (orB *orderBook) First(isBuy bool) *simOrderType {
 
 func (orB *orderBook) Remove(isBuy bool) {
 	if isBuy {
-		node := orB.bidIt.Get()
-		orB.bids.Remove(node)
+		orB.bidIt.RemoveCur()
 	} else {
-		node := orB.askIt.Get()
-		orB.asks.Remove(node)
+		orB.askIt.RemoveCur()
 	}
 
 }
@@ -121,10 +105,12 @@ func (orB *orderBook) Get(isBuy bool) *simOrderType {
 
 func (orB *orderBook) getBestBid() *simOrderType {
 	if orB.bidIt == nil {
-		orB.bidIt = orB.bids.Iterator(avl.Forward)
+		orB.bidIt = orB.bids.First()
+	} else {
+		orB.bidIt.First()
 	}
-	if node := orB.bidIt.First(); node != nil {
-		or := node.Value.(*simOrderType)
+	if v := orB.bidIt.Get(); v != nil {
+		or := v.(*simOrderType)
 		return or
 	}
 	return nil
@@ -132,9 +118,9 @@ func (orB *orderBook) getBestBid() *simOrderType {
 
 func (orB *orderBook) nextBid() *simOrderType {
 	if orB.bidIt != nil {
-		if node := orB.bidIt.Next(); node != nil {
-			v := node.Value.(*simOrderType)
-			return v
+		if v := orB.bidIt.Next(); v != nil {
+			or := v.(*simOrderType)
+			return or
 		}
 	}
 	return nil
@@ -144,8 +130,8 @@ func (orB *orderBook) curBid() *simOrderType {
 	if orB.bidIt == nil {
 		return nil
 	}
-	if node := orB.bidIt.Get(); node != nil {
-		or := node.Value.(*simOrderType)
+	if v := orB.bidIt.Get(); v != nil {
+		or := v.(*simOrderType)
 		return or
 	}
 	return nil
@@ -153,10 +139,12 @@ func (orB *orderBook) curBid() *simOrderType {
 
 func (orB *orderBook) getBestAsk() *simOrderType {
 	if orB.askIt == nil {
-		orB.askIt = orB.asks.Iterator(avl.Forward)
+		orB.askIt = orB.asks.First()
+	} else {
+			orB.askIt.First()
 	}
-	if node := orB.askIt.First(); node != nil {
-		or := node.Value.(*simOrderType)
+	if v := orB.askIt.Get(); v != nil {
+		or := v.(*simOrderType)
 		return or
 	}
 	return nil
@@ -164,8 +152,8 @@ func (orB *orderBook) getBestAsk() *simOrderType {
 
 func (orB *orderBook) nextAsk() *simOrderType {
 	if orB.askIt != nil {
-		if node := orB.askIt.Next(); node != nil {
-			or := node.Value.(*simOrderType)
+		if v := orB.askIt.Next(); v != nil {
+			or := v.(*simOrderType)
 			return or
 		}
 	}
@@ -176,8 +164,8 @@ func (orB *orderBook) curAsk() *simOrderType {
 	if orB.askIt == nil {
 		return nil
 	}
-	if node := orB.askIt.Get(); node != nil {
-		or := node.Value.(*simOrderType)
+	if v := orB.askIt.Get(); v != nil {
+		or := v.(*simOrderType)
 		return or
 	}
 	return nil
@@ -185,8 +173,8 @@ func (orB *orderBook) curAsk() *simOrderType {
 
 func NewOrderBook() *orderBook {
 	var orBook orderBook
-	orBook.bids = avl.New(bidCompare)
-	orBook.asks = avl.New(askCompare)
+	orBook.bids = NewTree(bidCompare)
+	orBook.asks = NewTree(askCompare)
 	orBook.bidIt = nil
 	orBook.askIt = nil
 	return &orBook

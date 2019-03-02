@@ -1,7 +1,6 @@
 package auction
 
 import (
-	"fmt"
 	"math/rand"
 	"testing"
 	"time"
@@ -176,6 +175,7 @@ func TestCallAuction(t *testing.T) {
 		sym    string
 		pclose int
 	}
+	instr := "cu1906"
 	tests := []struct {
 		name          string
 		args          args
@@ -184,14 +184,13 @@ func TestCallAuction(t *testing.T) {
 		wantVolRemain int
 	}{
 		// TODO: Add test cases.
-		{"callAuction test1", args{"cu1906", 40000}, 43900, 75, 0},
-		{"callAuction test1", args{"cu1906", 50000}, 43900, 75, 0},
+		{"callAuction test1", args{instr, 40000}, 43900, 75, 0},
+		{"callAuction test1", args{instr, 50000}, 43900, 75, 0},
 	}
-	cleanupOrderBook("cu1906")
+	cleanupOrderBook(instr)
 	buildOrBook(orders1)
-
+	bids, asks := BuildOrBk(instr)
 	for _, tt := range tests {
-		bids, asks := BuildOrBk(tt.args.sym)
 		t.Run(tt.name, func(t *testing.T) {
 			gotLast, gotMaxVol, gotVolRemain := CallAuction(bids, asks, tt.args.pclose)
 			if gotLast != tt.wantLast {
@@ -234,6 +233,7 @@ func TestMatchCross(t *testing.T) {
 	}
 
 	tdNo := 0
+	var bids, asks []*simOrderType
 	//buildOrBook(orders1)
 	for _, tt := range tests {
 		if tt.dataNo != tdNo {
@@ -242,9 +242,9 @@ func TestMatchCross(t *testing.T) {
 				t.Logf("Change testData orders %d", tdNo)
 				cleanupOrderBook("cu1906")
 				buildOrBook(orderSS[tdNo-1])
+				bids, asks = BuildOrBk(tt.args.sym)
 			}
 		}
-		bids, asks := BuildOrBk(tt.args.sym)
 		t.Run(tt.name, func(t *testing.T) {
 			gotLast, gotMaxVol, gotVolRemain := CallAuction(bids, asks, tt.args.pclose)
 			if gotLast != tt.wantLast {
@@ -355,41 +355,6 @@ func buildBenchOrderBook() int {
 	return count
 }
 
-func TestTradeContinue(t *testing.T) {
-	count := buildBenchOrderBook()
-	instr := "cu1908"
-	tt := time.Now()
-	logging.SetLevel(logging.WARNING, "go-auction")
-	last, vol, volRemain := MatchCross(instr, pclose)
-	du := time.Now().Sub(tt)
-	fmt.Printf("Auction match %d orders remain(%d) cost %.3f ms, %.2f Ops\n",
-		count, volRemain, du.Seconds()*1000.0, float64(count)/du.Seconds())
-	tt = time.Now()
-	MatchOrder(instr, true, last, vol)
-	MatchOrder(instr, false, last, vol)
-	du = time.Now().Sub(tt)
-	fmt.Printf("生成成交单耗时: %.3f ms\n", du.Seconds()*1000.0)
-	if ob, ok := simOrderBook["cu1908"]; ok {
-		bLen, aLen := ob.bookLen()
-		fmt.Printf("Afte MatchCross orderBook bids: %d, asks: %d\n", bLen, aLen)
-	}
-	tt = time.Now()
-	count = int(1e6)
-	simState = StateTrading
-	for i := 0; i < count; i++ {
-		price := rand.Intn(20000) + pclose - 10000
-		vol := rand.Intn(100) + 1
-		SendOrder("cu1908", (price&1) != 0, vol, price)
-	}
-	du = time.Now().Sub(tt)
-	fmt.Printf("连续交易 %d orders cost %.3f ms, %.2f Ops\n", count, du.Seconds()*1000.0,
-		float64(count)/du.Seconds())
-	if ob, ok := simOrderBook["cu1908"]; ok {
-		bLen, aLen := ob.bookLen()
-		fmt.Printf("连续交易后 orderBook bids: %d, asks: %d\n", bLen, aLen)
-	}
-}
-
 func BenchmarkCallAuction(b *testing.B) {
 	b.StopTimer()
 	buildBenchOrderBook()
@@ -428,4 +393,22 @@ func BenchmarkMatchCross(b *testing.B) {
 			b.Logf("MatchCross price:%d, volume:%d, remainVol:%d", gotLast, vol, gotVolRemain)
 		}
 	}
+}
+
+func BenchmarkMatchTradeContinue(b *testing.B) {
+	b.StopTimer()
+	buildBenchOrderBook()
+	logging.SetLevel(logging.WARNING, "go-auction")
+	instr := "cu1908"
+	last, vol, _ := MatchCross(instr, pclose)
+	MatchOrder(instr, true, last, vol)
+	MatchOrder(instr, false, last, vol)
+	simState = StateTrading
+	b.StartTimer()
+	for i := 0; i < b.N; i++ {
+		price := rand.Intn(20000) + pclose - 10000
+		vol := rand.Intn(100) + 1
+		SendOrder(instr, (price&1) != 0, vol, price)
+	}
+	simState = StateIdle
 }
