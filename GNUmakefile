@@ -43,6 +43,12 @@ test:
 bench:
 	@(cd src/auction;GOGC=400 go test -bench=Match)
 
+rbtest:
+	@(cd src/auction;go test -tags rbtree)
+
+rbbench:
+	@(cd src/auction;GOGC=400 go test -tags rbtree -bench=Match)
+
 clean:
 
 distclean: clean

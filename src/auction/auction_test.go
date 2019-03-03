@@ -15,6 +15,13 @@ type orderArgs struct {
 	prc  int
 }
 
+type dealArgs struct {
+	no    int
+	oid   int
+	price int
+	vol   int
+}
+
 var testInstr = "cu1906"
 var orders1 = []orderArgs{
 	{testInstr, true, 10, 42000},
@@ -29,6 +36,17 @@ var orders1 = []orderArgs{
 	{testInstr, false, 10, 43200},
 	{testInstr, true, 15, 43800},
 	{testInstr, false, 20, 43200},
+}
+
+var deals1 = []dealArgs{
+	{1, 4, 43500, 45},
+	{2, 8, 43500, 45},
+	{3, 4, 43200, 5},
+	{4, 10, 43200, 5},
+	{5, 9, 43200, 5},
+	{6, 10, 43200, 5},
+	{7, 9, 43200, 20},
+	{8, 12, 43200, 20},
 }
 
 var orders2 = []orderArgs{
@@ -327,6 +345,58 @@ func TestMatchCrossFill(t *testing.T) {
 	}
 }
 
+func TestTraingContinue(t *testing.T) {
+	tests := []struct {
+		name string
+		args orderArgs
+		want int
+	}{
+		// TODO: Add test cases.
+		{"cu1906-t1", orders1[0], 1},
+		{"cu1906-t2", orders1[1], 2},
+		{"cu1906-t3", orders1[2], 3},
+		{"cu1906-t4", orders1[3], 4},
+		{"cu1906-t5", orders1[4], 5},
+		{"cu1906-t6", orders1[5], 6},
+		{"cu1906-t7", orders1[6], 7},
+		{"cu1906-t8", orders1[7], 8},
+		{"cu1906-t9", orders1[8], 9},
+		{"cu1906-t10", orders1[9], 10},
+		{"cu1906-t11", orders1[10], 11},
+		{"cu1906-t12", orders1[11], 12},
+	}
+	cleanupOrderBook(testInstr)
+	MarketStart(true)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := SendOrder(tt.args.sym, tt.args.bBuy, tt.args.qty, tt.args.prc); got != tt.want {
+				t.Errorf("SendOrder() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+	if err := verifySimOrderBook(testInstr); err != nil {
+		t.Error("cu1906 orderBook", err)
+	}
+	MarketStop()
+	// verify Deals
+	for _, dd := range deals1 {
+		if dv := getDeal(dd.no); dv == nil {
+			t.Errorf("Can't find DealNo: %d", dd.no)
+		} else {
+			if dd.oid != dv.oid {
+				t.Errorf("DealNo: %d, oid differ: %d Got %d", dd.no, dd.oid, dv.oid)
+			}
+			if dd.price != dv.price {
+				t.Errorf("DealNo: %d, price differ: %d Got %d", dd.no, dd.price, dv.price)
+			}
+			if dd.vol != dv.vol {
+				t.Errorf("DealNo: %d, volume differ: %d Got %d", dd.no, dd.vol, dv.vol)
+			}
+		}
+	}
+	dumpSimOrderBook(testInstr)
+}
+
 var pclose = 50000
 
 func buildBenchOrderBook(instr string) int {
@@ -335,6 +405,7 @@ func buildBenchOrderBook(instr string) int {
 		log.Infof("orderBook bids: %d, asks: %d", bLen, aLen)
 		return bLen + aLen
 	}
+	simState = StatePreAuction
 	tt := time.Now()
 	rand.Seed(tt.Unix())
 	//orders := []simOrderType{}
@@ -417,15 +488,15 @@ func BenchmarkMatchTradeContinue(b *testing.B) {
 		}
 	*/
 	logging.SetLevel(logging.WARNING, "go-auction")
-	simState = StateTrading
+	MarketStart(false)
 	b.StartTimer()
 	for i := 0; i < b.N; i++ {
 		price := rand.Intn(20000) + pclose - 10000
 		vol := rand.Intn(100) + 1
 		SendOrder(instr, (price&1) != 0, vol, price)
 	}
-	simState = StateIdle
 	b.StopTimer()
+	MarketStop()
 	/*
 		if ob, ok := simOrderBook[instr]; ok {
 			bLen, aLen := ob.bookLen()

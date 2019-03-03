@@ -8,10 +8,12 @@ import (
 )
 
 const maxOrders = 20000000
+const maxDeals = 10000000
 
 var orderNo int
+var dealNo int
 var simOrders [maxOrders]*simOrderType
-
+var simDeals [maxDeals]*simDealType
 var simState int = StatePreAuction
 
 const (
@@ -43,8 +45,32 @@ func cleanupOrderBook(sym string) {
 	}
 }
 
-func MarketStart() {
+func pushDeal(oid, price, vol int) {
+	if dealNo >= maxDeals {
+		return
+	}
+	var deal = simDealType{no: dealNo + 1, oid: oid, price: price, vol: vol}
+	simDeals[dealNo] = &deal
+	dealNo++
+}
+
+func getDeal(no int) *simDealType {
+	if no <= 0 || no > dealNo {
+		return nil
+	}
+	return simDeals[no-1]
+}
+
+func DealCount() int {
+	return dealNo
+}
+
+func MarketStart(cleanOrder bool) {
 	simState = StateTrading
+	dealNo = 0
+	if cleanOrder {
+		orderNo = 0
+	}
 }
 
 func MarketStop() {
@@ -240,10 +266,13 @@ func tryMatchOrderBook(order *simOrderType) (filled bool) {
 		}
 		or.Filled += volFilled
 		or.PriceFilled = last
-		simLogMatchs++
-		if simLogMatchs <= 10 {
-			log.Infof("Filled No:%d %s %d %s %d(filled %d)", or.oid, or.Symbol,
-				or.price, or.Dir(), or.Qty, volFilled)
+		pushDeal(or.oid, last, volFilled)
+		if simState == StateTrading {
+			simLogMatchs++
+			if simLogMatchs <= 10 {
+				log.Infof("Filled No:%d %s %d %s %d(filled %d)", or.oid, or.Symbol,
+					last, or.Dir(), or.Qty, volFilled)
+			}
 		}
 		return
 	}
@@ -257,11 +286,11 @@ func tryMatchOrderBook(order *simOrderType) (filled bool) {
 			if isBuy {
 				if v.price >= last {
 					// match
-					vol := setFill(v, v.price, volume)
+					vol := setFill(v, last, volume)
 					if v.Filled >= v.Qty {
 						orB.RemoveFirst(isBuy)
 					}
-					setFill(order, v.price, vol)
+					setFill(order, last, vol)
 					volume -= vol
 					if volume == 0 {
 						filled = true
@@ -280,6 +309,7 @@ func tryMatchOrderBook(order *simOrderType) (filled bool) {
 					if v.Filled >= v.Qty {
 						orB.RemoveFirst(isBuy)
 					}
+					setFill(order, last, vol)
 					volume -= vol
 					if volume == 0 {
 						filled = true
@@ -431,11 +461,6 @@ func CallAuction(bids, asks []*simOrderType, pclose int) (last int, maxVol, volR
 	}
 	log.Infof("callAuction end price:%d volume:%d(left: %d)", last, maxVol, volRemain)
 	return
-}
-
-type quoteLevel struct {
-	price  int
-	volume int
 }
 
 func MatchCrossOld(sym string, pclose int) (last int, maxVol, volRemain int) {

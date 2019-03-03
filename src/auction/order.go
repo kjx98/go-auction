@@ -17,3 +17,10 @@ func (or *simOrderType) Dir() string {
 	}
 	return "sell"
 }
+
+type simDealType struct {
+	no   int
+	oid  int
+	price int
+	vol  int
+}

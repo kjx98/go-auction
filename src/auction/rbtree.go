@@ -60,6 +60,9 @@ func (t *Tree) First() *Iterator {
 
 func (it *Iterator) First() interface{} {
 	it.it = it.tree.Min()
+	if it.it.Limit() {
+		return nil
+	}
 	return it.it.Item()
 }
 

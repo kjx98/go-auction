@@ -181,10 +181,12 @@ func main() {
 	bLen, aLen = auction.OrderBookLen(instr)
 	fmt.Printf("集合竞价后报单簿, bid QLen: %d, ask QLen: %d\n", bLen, aLen)
 	if testTrading {
-		auction.MarketStart()
+		auction.MarketStart(false)
 		buildOrderBook(true)
 		bLen, aLen = auction.OrderBookLen(instr)
 		fmt.Printf("连续交易后报单簿, bid QLen: %d, ask QLen: %d\n", bLen, aLen)
+		cnt := auction.DealCount()
+		fmt.Printf("连续交易成交笔数: %d\n", cnt)
 	}
 }
 
