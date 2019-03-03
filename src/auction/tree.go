@@ -84,12 +84,13 @@ func (it *Iterator) Next() interface{} {
 	return nil
 }
 
-func (it *Iterator) RemoveCur() bool {
+func (it *Iterator) RemoveFirst() bool {
 	if it.it == nil {
 		return false
 	}
 	if node := it.it.Get(); node != nil {
 		it.tree.Remove(node)
+		it.it.Next()
 		return true
 	}
 	return false

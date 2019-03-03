@@ -15,61 +15,62 @@ type orderArgs struct {
 	prc  int
 }
 
+var testInstr = "cu1906"
 var orders1 = []orderArgs{
-	{"cu1906", true, 10, 42000},
-	{"cu1906", true, 20, 43000},
-	{"cu1906", true, 30, 41000},
-	{"cu1906", true, 50, 44000},
-	{"cu1906", false, 10, 45000},
-	{"cu1906", false, 20, 48000},
-	{"cu1906", false, 30, 46000},
-	{"cu1906", false, 45, 43500},
-	{"cu1906", true, 25, 43900},
-	{"cu1906", false, 10, 43200},
-	{"cu1906", true, 15, 43800},
-	{"cu1906", false, 20, 43200},
+	{testInstr, true, 10, 42000},
+	{testInstr, true, 20, 43000},
+	{testInstr, true, 30, 41000},
+	{testInstr, true, 50, 44000},
+	{testInstr, false, 10, 45000},
+	{testInstr, false, 20, 48000},
+	{testInstr, false, 30, 46000},
+	{testInstr, false, 45, 43500},
+	{testInstr, true, 25, 43900},
+	{testInstr, false, 10, 43200},
+	{testInstr, true, 15, 43800},
+	{testInstr, false, 20, 43200},
 }
 
 var orders2 = []orderArgs{
-	{"cu1906", true, 20, 43000},
-	{"cu1906", true, 50, 44000},
-	{"cu1906", false, 10, 45000},
-	{"cu1906", false, 45, 43500},
-	{"cu1906", false, 10, 43200},
-	{"cu1906", true, 25, 43900},
-	{"cu1906", false, 20, 43200},
+	{testInstr, true, 20, 43000},
+	{testInstr, true, 50, 44000},
+	{testInstr, false, 10, 45000},
+	{testInstr, false, 45, 43500},
+	{testInstr, false, 10, 43200},
+	{testInstr, true, 25, 43900},
+	{testInstr, false, 20, 43200},
 }
 
 var orders3 = []orderArgs{
-	{"cu1906", true, 20, 43000},
-	{"cu1906", true, 50, 44000},
-	{"cu1906", true, 15, 43900},
-	{"cu1906", false, 10, 45000},
-	{"cu1906", false, 45, 43500},
-	{"cu1906", false, 10, 43200},
-	{"cu1906", false, 20, 43200},
+	{testInstr, true, 20, 43000},
+	{testInstr, true, 50, 44000},
+	{testInstr, true, 15, 43900},
+	{testInstr, false, 10, 45000},
+	{testInstr, false, 45, 43500},
+	{testInstr, false, 10, 43200},
+	{testInstr, false, 20, 43200},
 }
 
 var orders4 = []orderArgs{
-	{"cu1906", true, 20, 43000},
-	{"cu1906", true, 50, 44000},
-	{"cu1906", true, 20, 43900},
-	{"cu1906", true, 30, 43900},
-	{"cu1906", false, 10, 45000},
-	{"cu1906", false, 40, 43500},
-	{"cu1906", false, 10, 43200},
-	{"cu1906", false, 20, 43200},
+	{testInstr, true, 20, 43000},
+	{testInstr, true, 50, 44000},
+	{testInstr, true, 20, 43900},
+	{testInstr, true, 30, 43900},
+	{testInstr, false, 10, 45000},
+	{testInstr, false, 40, 43500},
+	{testInstr, false, 10, 43200},
+	{testInstr, false, 20, 43200},
 }
 
 var orders5 = []orderArgs{
-	{"cu1906", true, 20, 43000},
-	{"cu1906", true, 50, 44000},
-	{"cu1906", true, 20, 43900},
-	{"cu1906", false, 10, 45000},
-	{"cu1906", false, 15, 43500},
-	{"cu1906", false, 40, 43500},
-	{"cu1906", false, 10, 43200},
-	{"cu1906", false, 20, 43200},
+	{testInstr, true, 20, 43000},
+	{testInstr, true, 50, 44000},
+	{testInstr, true, 20, 43900},
+	{testInstr, false, 10, 45000},
+	{testInstr, false, 15, 43500},
+	{testInstr, false, 40, 43500},
+	{testInstr, false, 10, 43200},
+	{testInstr, false, 20, 43200},
 }
 
 var orderSS = [][]orderArgs{orders1, orders2, orders3, orders4, orders5}
@@ -109,10 +110,10 @@ func TestSendOrder(t *testing.T) {
 			}
 		})
 	}
-	if err := verifySimOrderBook("cu1906"); err != nil {
+	if err := verifySimOrderBook(testInstr); err != nil {
 		t.Error("cu1906 orderBook", err)
 	}
-	dumpSimOrderBook("cu1906")
+	dumpSimOrderBook(testInstr)
 }
 
 func TestCancelOrder(t *testing.T) {
@@ -136,13 +137,13 @@ func TestCancelOrder(t *testing.T) {
 			}
 		})
 	}
-	if err := verifySimOrderBook("cu1906"); err != nil {
-		t.Error("cu1906 orderBook", err)
+	if err := verifySimOrderBook(testInstr); err != nil {
+		t.Error(testInstr, "orderBook", err)
 	}
-	dumpSimOrderBook("cu1906")
-	cleanupOrderBook("cu1906")
-	if _, ok := simOrderBook["cu1906"]; ok {
-		t.Error("cu1906 orderBook remains")
+	dumpSimOrderBook(testInstr)
+	cleanupOrderBook(testInstr)
+	if _, ok := simOrderBook[testInstr]; ok {
+		t.Error(testInstr, "orderBook remains")
 	}
 }
 
@@ -157,8 +158,8 @@ func Test_getBestPrice(t *testing.T) {
 		want int
 	}{
 		// TODO: Add test cases.
-		{"Bid test1", args{"cu1906", true}, 44000},
-		{"Ask test1", args{"cu1906", false}, 43200},
+		{"Bid test1", args{testInstr, true}, 44000},
+		{"Ask test1", args{testInstr, false}, 43200},
 	}
 	buildOrBook(orders1)
 	for _, tt := range tests {
@@ -175,7 +176,7 @@ func TestCallAuction(t *testing.T) {
 		sym    string
 		pclose int
 	}
-	instr := "cu1906"
+	instr := testInstr
 	tests := []struct {
 		name          string
 		args          args
@@ -220,16 +221,16 @@ func TestMatchCross(t *testing.T) {
 		wantVolRemain int
 	}{
 		// TODO: Add test cases.
-		{"MatchCross test1", args{"cu1906", 40000}, 1, 43900, 75, 0},
-		{"MatchCross test2", args{"cu1906", 50000}, 1, 43900, 75, 0},
-		{"MatchCross test3", args{"cu1906", 40000}, 2, 43500, 75, 0},
-		{"MatchCross test4", args{"cu1906", 50000}, 2, 43900, 75, 0},
-		{"MatchCross test5", args{"cu1906", 40000}, 3, 43900, 65, 10},
-		{"MatchCross test6", args{"cu1906", 50000}, 3, 43900, 65, 10},
-		{"MatchCross test7", args{"cu1906", 40000}, 4, 43500, 70, 30},
-		{"MatchCross test8", args{"cu1906", 50000}, 4, 43500, 70, 30},
-		{"MatchCross test9", args{"cu1906", 40000}, 5, 43900, 70, 15},
-		{"MatchCross test10", args{"cu1906", 50000}, 5, 43900, 70, 15},
+		{"MatchCross test1", args{testInstr, 40000}, 1, 43900, 75, 0},
+		{"MatchCross test2", args{testInstr, 50000}, 1, 43900, 75, 0},
+		{"MatchCross test3", args{testInstr, 40000}, 2, 43500, 75, 0},
+		{"MatchCross test4", args{testInstr, 50000}, 2, 43900, 75, 0},
+		{"MatchCross test5", args{testInstr, 40000}, 3, 43900, 65, 10},
+		{"MatchCross test6", args{testInstr, 50000}, 3, 43900, 65, 10},
+		{"MatchCross test7", args{testInstr, 40000}, 4, 43500, 70, 30},
+		{"MatchCross test8", args{testInstr, 50000}, 4, 43500, 70, 30},
+		{"MatchCross test9", args{testInstr, 40000}, 5, 43900, 70, 15},
+		{"MatchCross test10", args{testInstr, 50000}, 5, 43900, 70, 15},
 	}
 
 	tdNo := 0
@@ -240,7 +241,7 @@ func TestMatchCross(t *testing.T) {
 			tdNo = tt.dataNo
 			if tdNo > 0 && tdNo <= len(orderSS) {
 				t.Logf("Change testData orders %d", tdNo)
-				cleanupOrderBook("cu1906")
+				cleanupOrderBook(testInstr)
 				buildOrBook(orderSS[tdNo-1])
 				bids, asks = BuildOrBk(tt.args.sym)
 			}
@@ -294,22 +295,22 @@ func TestMatchCrossFill(t *testing.T) {
 		wantVolRemain int
 	}{
 		// TODO: Add test cases.
-		{"MatchCross test1", args{"cu1906", 40000}, 1, 43900, 75, 0},
-		{"MatchCross test2", args{"cu1906", 50000}, 1, 43900, 75, 0},
-		{"MatchCross test3", args{"cu1906", 40000}, 2, 43500, 75, 0},
-		{"MatchCross test4", args{"cu1906", 50000}, 2, 43900, 75, 0},
-		{"MatchCross test5", args{"cu1906", 40000}, 3, 43900, 65, 10},
-		{"MatchCross test6", args{"cu1906", 50000}, 3, 43900, 65, 10},
-		{"MatchCross test7", args{"cu1906", 40000}, 4, 43500, 70, 30},
-		{"MatchCross test8", args{"cu1906", 50000}, 4, 43500, 70, 30},
-		{"MatchCross test9", args{"cu1906", 40000}, 5, 43900, 70, 15},
-		{"MatchCross test10", args{"cu1906", 50000}, 5, 43900, 70, 15},
+		{"MatchCross test1", args{testInstr, 40000}, 1, 43900, 75, 0},
+		{"MatchCross test2", args{testInstr, 50000}, 1, 43900, 75, 0},
+		{"MatchCross test3", args{testInstr, 40000}, 2, 43500, 75, 0},
+		{"MatchCross test4", args{testInstr, 50000}, 2, 43900, 75, 0},
+		{"MatchCross test5", args{testInstr, 40000}, 3, 43900, 65, 10},
+		{"MatchCross test6", args{testInstr, 50000}, 3, 43900, 65, 10},
+		{"MatchCross test7", args{testInstr, 40000}, 4, 43500, 70, 30},
+		{"MatchCross test8", args{testInstr, 50000}, 4, 43500, 70, 30},
+		{"MatchCross test9", args{testInstr, 40000}, 5, 43900, 70, 15},
+		{"MatchCross test10", args{testInstr, 50000}, 5, 43900, 70, 15},
 	}
 
 	//buildOrBook(orders1)
 	for _, tt := range tests {
 		tdNo := tt.dataNo
-		cleanupOrderBook("cu1906")
+		cleanupOrderBook(testInstr)
 		buildOrBook(orderSS[tdNo-1])
 		t.Run(tt.name, func(t *testing.T) {
 			gotLast, gotMaxVol, gotVolRemain := MatchCrossFill(tt.args.sym, tt.args.pclose)
@@ -328,8 +329,8 @@ func TestMatchCrossFill(t *testing.T) {
 
 var pclose = 50000
 
-func buildBenchOrderBook() int {
-	if ob, ok := simOrderBook["cu1908"]; ok {
+func buildBenchOrderBook(instr string) int {
+	if ob, ok := simOrderBook[instr]; ok {
 		bLen, aLen := ob.bookLen()
 		log.Infof("orderBook bids: %d, asks: %d", bLen, aLen)
 		return bLen + aLen
@@ -341,14 +342,14 @@ func buildBenchOrderBook() int {
 	for i := 0; i < count; i++ {
 		price := rand.Intn(20000) + pclose - 10000
 		vol := rand.Intn(100) + 1
-		SendOrder("cu1908", (i&1) != 0, vol, price)
+		SendOrder(instr, (i&1) != 0, vol, price)
 	}
 	// build cu1908 orderBook
 	et := time.Now()
 	du := et.Sub(tt)
 	log.Infof("Build rand %d orders cost %.3f seconds, %g Ops", count, du.Seconds(),
 		float64(count)/du.Seconds())
-	if ob, ok := simOrderBook["cu1908"]; ok {
+	if ob, ok := simOrderBook[instr]; ok {
 		bLen, aLen := ob.bookLen()
 		log.Infof("New orderBook bids: %d, asks: %d", bLen, aLen)
 	}
@@ -357,9 +358,10 @@ func buildBenchOrderBook() int {
 
 func BenchmarkCallAuction(b *testing.B) {
 	b.StopTimer()
-	buildBenchOrderBook()
+	instr := "cu1908"
+	buildBenchOrderBook(instr)
 	logging.SetLevel(logging.WARNING, "go-auction")
-	bids, asks := BuildOrBk("cu1908")
+	bids, asks := BuildOrBk(instr)
 	b.StartTimer()
 	for i := 0; i < b.N; i++ {
 		gotLast, vol, gotVolRemain := CallAuction(bids, asks, pclose)
@@ -371,11 +373,12 @@ func BenchmarkCallAuction(b *testing.B) {
 
 func BenchmarkMatchCrossOld(b *testing.B) {
 	b.StopTimer()
-	buildBenchOrderBook()
+	instr := "cu1908"
+	buildBenchOrderBook(instr)
 	logging.SetLevel(logging.WARNING, "go-auction")
 	b.StartTimer()
 	for i := 0; i < b.N; i++ {
-		gotLast, vol, gotVolRemain := MatchCrossOld("cu1908", pclose)
+		gotLast, vol, gotVolRemain := MatchCrossOld(instr, pclose)
 		if i == 0 {
 			b.Logf("MatchCrossOld price:%d, volume:%d, remainVol:%d", gotLast, vol, gotVolRemain)
 		}
@@ -384,11 +387,12 @@ func BenchmarkMatchCrossOld(b *testing.B) {
 
 func BenchmarkMatchCross(b *testing.B) {
 	b.StopTimer()
-	buildBenchOrderBook()
+	instr := "cu1908"
+	buildBenchOrderBook(instr)
 	logging.SetLevel(logging.WARNING, "go-auction")
 	b.StartTimer()
 	for i := 0; i < b.N; i++ {
-		gotLast, vol, gotVolRemain := MatchCross("cu1908", pclose)
+		gotLast, vol, gotVolRemain := MatchCross(instr, pclose)
 		if i == 0 {
 			b.Logf("MatchCross price:%d, volume:%d, remainVol:%d", gotLast, vol, gotVolRemain)
 		}
@@ -397,12 +401,22 @@ func BenchmarkMatchCross(b *testing.B) {
 
 func BenchmarkMatchTradeContinue(b *testing.B) {
 	b.StopTimer()
-	buildBenchOrderBook()
-	logging.SetLevel(logging.WARNING, "go-auction")
 	instr := "cu1908"
-	last, vol, _ := MatchCross(instr, pclose)
-	MatchOrder(instr, true, last, vol)
-	MatchOrder(instr, false, last, vol)
+	buildBenchOrderBook(instr)
+	logging.SetLevel(logging.WARNING, "go-auction")
+	last, vol, volRemain := MatchCross(instr, pclose)
+	b.Logf("MatchCross price:%d, volume:%d, remainVol:%d", last, vol, volRemain)
+	if last > 0 {
+		MatchOrder(instr, true, last, vol)
+		MatchOrder(instr, false, last, vol)
+	}
+	/*
+		if ob, ok := simOrderBook[instr]; ok {
+			bLen, aLen := ob.bookLen()
+			b.Logf("Before TradeContinous orderBook bids: %d, asks: %d", bLen, aLen)
+		}
+	*/
+	logging.SetLevel(logging.WARNING, "go-auction")
 	simState = StateTrading
 	b.StartTimer()
 	for i := 0; i < b.N; i++ {
@@ -411,4 +425,11 @@ func BenchmarkMatchTradeContinue(b *testing.B) {
 		SendOrder(instr, (price&1) != 0, vol, price)
 	}
 	simState = StateIdle
+	b.StopTimer()
+	/*
+		if ob, ok := simOrderBook[instr]; ok {
+			bLen, aLen := ob.bookLen()
+			b.Logf("After TradeContinous orderBook bids: %d, asks: %d", bLen, aLen)
+		}
+	*/
 }

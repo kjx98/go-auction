@@ -183,13 +183,13 @@ func MatchOrder(sym string, isBuy bool, last, volume int) {
 	}
 
 	if orB, ok := simOrderBook[sym]; ok {
-		for v := orB.First(isBuy); v != nil; v = orB.Next(isBuy) {
+		for v := orB.First(isBuy); v != nil; v = orB.Get(isBuy) {
 			if isBuy {
 				if v.price >= last {
 					// match
 					volume -= setFill(v, last, volume)
 					if v.Filled >= v.Qty {
-						orB.Remove(isBuy)
+						orB.RemoveFirst(isBuy)
 					} else {
 						if volume > 0 {
 							log.Errorf("no way go here, Buy volume @%d remains", v.price)
@@ -210,7 +210,7 @@ func MatchOrder(sym string, isBuy bool, last, volume int) {
 					// match
 					volume -= setFill(v, last, volume)
 					if v.Filled >= v.Qty {
-						orB.Remove(isBuy)
+						orB.RemoveFirst(isBuy)
 					} else {
 						if volume > 0 {
 							log.Errorf("no way go here, Sell volume @%d remains", v.price)
@@ -251,7 +251,7 @@ func tryMatchOrderBook(order *simOrderType) (filled bool) {
 	sym := order.Symbol
 	if orB, ok := simOrderBook[sym]; ok {
 		isBuy := !order.bBuy
-		for v := orB.First(isBuy); v != nil; v = orB.Next(isBuy) {
+		for v := orB.First(isBuy); v != nil; v = orB.Get(isBuy) {
 			volume := order.Qty - order.Filled
 			last := order.price
 			if isBuy {
@@ -259,7 +259,7 @@ func tryMatchOrderBook(order *simOrderType) (filled bool) {
 					// match
 					vol := setFill(v, v.price, volume)
 					if v.Filled >= v.Qty {
-						orB.Remove(isBuy)
+						orB.RemoveFirst(isBuy)
 					}
 					setFill(order, v.price, vol)
 					volume -= vol
@@ -278,7 +278,7 @@ func tryMatchOrderBook(order *simOrderType) (filled bool) {
 					// match
 					vol := setFill(v, last, volume)
 					if v.Filled >= v.Qty {
-						orB.Remove(isBuy)
+						orB.RemoveFirst(isBuy)
 					}
 					volume -= vol
 					if volume == 0 {
@@ -439,6 +439,10 @@ type quoteLevel struct {
 }
 
 func MatchCrossOld(sym string, pclose int) (last int, maxVol, volRemain int) {
+	type quoteLevel struct {
+		price  int
+		volume int
+	}
 	buildQuoteLevel := func(ti string, isBuy bool, last, endPrice int) (qs []quoteLevel) {
 		if orB, ok := simOrderBook[ti]; ok {
 			volume := 0
@@ -689,8 +693,8 @@ func MatchCrossFill(sym string, pclose int) (last int, maxVol, volRemain int) {
 			bidOr.Filled += askVol
 			askOr.Filled += askVol
 			//ordersFilled = append(ordersFilled, askOr)
-			orB.Remove(false)
-			aP, askVol, askOr = getPriceVol(orB.Next(false))
+			orB.RemoveFirst(false)
+			aP, askVol, askOr = getPriceVol(orB.Get(false))
 		case bidVol < askVol:
 			maxVol += bidVol
 			askVol -= bidVol
@@ -699,21 +703,21 @@ func MatchCrossFill(sym string, pclose int) (last int, maxVol, volRemain int) {
 			bidOr.Filled += askVol
 			askOr.Filled += askVol
 			//ordersFilled = append(ordersFilled, bidOr)
-			orB.Remove(true)
-			bP, bidVol, bidOr = getPriceVol(orB.Next(true))
+			orB.RemoveFirst(true)
+			bP, bidVol, bidOr = getPriceVol(orB.Get(true))
 		case bidVol == askVol:
 			maxVol += bidVol
 			volRemain = 0
 			bidOr.Filled += askVol
 			askOr.Filled += askVol
 			//ordersFilled = append(ordersFilled, bidOr)
-			orB.Remove(true)
+			orB.RemoveFirst(true)
 			//ordersFilled = append(ordersFilled, askOr)
-			orB.Remove(false)
+			orB.RemoveFirst(false)
 			oaP = aP
 			obP = bP
-			aP, askVol, askOr = getPriceVol(orB.Next(false))
-			bP, bidVol, bidOr = getPriceVol(orB.Next(true))
+			aP, askVol, askOr = getPriceVol(orB.Get(false))
+			bP, bidVol, bidOr = getPriceVol(orB.Get(true))
 			if obP == oaP {
 				// maybe other bids or asks left
 				last = obP

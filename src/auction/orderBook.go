@@ -80,11 +80,11 @@ func (orB *orderBook) First(isBuy bool) *simOrderType {
 	return orB.getBestAsk()
 }
 
-func (orB *orderBook) Remove(isBuy bool) {
+func (orB *orderBook) RemoveFirst(isBuy bool) {
 	if isBuy {
-		orB.bidIt.RemoveCur()
+		orB.bidIt.RemoveFirst()
 	} else {
-		orB.askIt.RemoveCur()
+		orB.askIt.RemoveFirst()
 	}
 
 }
