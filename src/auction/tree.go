@@ -90,6 +90,7 @@ func (it *Iterator) RemoveFirst() bool {
 	}
 	if node := it.it.Get(); node != nil {
 		it.tree.Remove(node)
+		// if it.it.Next() is nil, may set it.it to nil
 		it.it.Next()
 		return true
 	}

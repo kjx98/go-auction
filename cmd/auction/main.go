@@ -34,7 +34,7 @@ func buildOrderBook(bTrading bool) {
 	tt := time.Now()
 	rand.Seed(tt.Unix())
 	for i := 0; i < count; i++ {
-		price := rand.Intn(2000)*10 + pclose - 10000
+		price := rand.Intn(20000) + pclose - 10000
 		vol := rand.Intn(100) + 1
 		auction.SendOrder(instr, (price&1) != 0, vol, price)
 	}
