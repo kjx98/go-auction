@@ -17,7 +17,7 @@ type Iterator struct {
 
 func NewTree(cmpF rbtree.CompareFunc) *Tree {
 	var tree = Tree{}
-	tree.tree = rbtree.NewTree(cmpF)
+	tree.tree = rbtree.New(cmpF)
 	if tree.tree != nil {
 		return &tree
 	}
@@ -37,15 +37,11 @@ func (t *Tree) Len() int {
 }
 
 func (t *Tree) Find(key interface{}) interface{} {
-	return t.tree.Get(key)
+	return t.tree.Find(key)
 }
 
 func (t *Tree) Delete(key interface{}) bool {
-	if v := t.tree.Get(key); v != nil {
-		t.tree.DeleteWithKey(v)
-		return true
-	}
-	return false
+	return t.tree.DeleteWithKey(key)
 }
 
 func (t *Tree) Insert(v interface{}) {
