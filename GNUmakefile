@@ -43,7 +43,7 @@ test:
 bench:
 	sudo cpupower frequency-set --governor performance
 	@(cd src/auction;GOGC=400 go test -bench=Match)
-	sudo cpupower frequency-set --governor ondemand
+	sudo cpupower frequency-set --governor powersave
 
 rbtest:
 	@(cd src/auction;go test -tags rbtree)
