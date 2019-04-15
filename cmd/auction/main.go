@@ -89,7 +89,7 @@ func main() {
 	flag.StringVar(&orderFile, "order", "", "csv format orders")
 	flag.StringVar(&longFile, "long", "", "csv format long orders")
 	flag.StringVar(&shortFile, "short", "", "csv format short orders")
-	flag.IntVar(&count, "count", 1000000, "orders count")
+	flag.IntVar(&count, "count", 2000000, "orders count")
 	flag.IntVar(&algo, "algo", 1, "Call Auction Algorithm")
 	flag.BoolVar(&verbose, "v", false, "verbose log")
 	flag.BoolVar(&testTrading, "t", false, "test continuous trading")
