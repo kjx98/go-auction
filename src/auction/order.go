@@ -1,6 +1,7 @@
 package auction
 
 type simOrderType struct {
+	node        TreeNode
 	oid         int
 	price       int
 	Symbol      string
@@ -10,7 +11,6 @@ type simOrderType struct {
 	PriceFilled int
 }
 
-
 func (or *simOrderType) Dir() string {
 	if or.bBuy {
 		return "buy"
@@ -19,8 +19,8 @@ func (or *simOrderType) Dir() string {
 }
 
 type simDealType struct {
-	no   int
-	oid  int
+	no    int
+	oid   int
 	price int
-	vol  int
+	vol   int
 }

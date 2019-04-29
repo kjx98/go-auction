@@ -15,6 +15,8 @@ type Iterator struct {
 	it   *rbtree.Iterator
 }
 
+type TreeNode = rbtree.Node
+
 func NewTree(cmpF rbtree.CompareFunc) *Tree {
 	var tree = Tree{}
 	tree.tree = rbtree.New(cmpF)

@@ -15,6 +15,8 @@ type Iterator struct {
 	it   *avl.Iterator
 }
 
+type TreeNode = avl.Node
+
 func NewTree(cmpF avl.CompareFunc) *Tree {
 	var tree = Tree{}
 	tree.tree = avl.New(cmpF)
@@ -53,7 +55,10 @@ func (t *Tree) Delete(key interface{}) bool {
 }
 
 func (t *Tree) Insert(v interface{}) {
-	t.tree.Insert(v)
+	or := v.(*simOrderType)
+	or.node.Value = v
+	t.tree.InsertNode(&or.node)
+	//t.tree.Insert(v)
 }
 
 func (t *Tree) First() *Iterator {
