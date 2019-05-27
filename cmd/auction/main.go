@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"math/rand"
 	"os"
+	"runtime"
 	"time"
 
 	"github.com/kjx98/golib/to"
@@ -145,7 +146,8 @@ func main() {
 		buildOrderBook(false)
 	}
 	bLen, aLen := auction.OrderBookLen(instr)
-	fmt.Printf("集合竞价前报单簿, bid QLen: %d, ask QLen: %d\n", bLen, aLen)
+	//fmt.Printf("集合竞价前报单簿, bid QLen: %d, ask QLen: %d\n", bLen, aLen)
+	fmt.Printf("Before auction, bid QLen: %d, ask QLen: %d\n", bLen, aLen)
 	tt := time.Now()
 	var last, volume, remain int
 	switch algo {
@@ -175,18 +177,22 @@ func main() {
 		auction.MatchOrder(instr, true, last, volume)
 		auction.MatchOrder(instr, false, last, volume)
 		du = time.Now().Sub(tt)
-		fmt.Printf("生成成交单耗时: %.3f ms\n", du.Seconds()*1000.0)
+		//fmt.Printf("生成成交单耗时: %.3f ms\n", du.Seconds()*1000.0)
+		fmt.Printf("Build deal reports cost: %.3f ms\n", du.Seconds()*1000.0)
 	}
 
 	bLen, aLen = auction.OrderBookLen(instr)
-	fmt.Printf("集合竞价后报单簿, bid QLen: %d, ask QLen: %d\n", bLen, aLen)
+	//fmt.Printf("集合竞价后报单簿, bid QLen: %d, ask QLen: %d\n", bLen, aLen)
+	fmt.Printf("After auction, bid QLen: %d, ask QLen: %d\n", bLen, aLen)
 	if testTrading {
 		auction.MarketStart(false)
 		buildOrderBook(true)
 		bLen, aLen = auction.OrderBookLen(instr)
-		fmt.Printf("连续交易后报单簿, bid QLen: %d, ask QLen: %d\n", bLen, aLen)
+		//fmt.Printf("连续交易后报单簿, bid QLen: %d, ask QLen: %d\n", bLen, aLen)
+		fmt.Printf("Trading continuous, bid QLen: %d, ask QLen: %d\n", bLen, aLen)
 		cnt := auction.DealCount()
-		fmt.Printf("连续交易成交笔数: %d\n", cnt)
+		//fmt.Printf("连续交易成交笔数: %d\n", cnt)
+		fmt.Printf("matchs in continuous trading: %d\n", cnt)
 	}
 }
 
@@ -196,6 +202,11 @@ func init() {
 		`%{color}%{time:01-02 15:04:05}  ▶ %{level:.4s} %{color:reset} %{message}`,
 	)
 
+	if runtime.GOARCH != "amd64" {
+		format = logging.MustStringFormatter(
+			`%{time:01-02 15:04:05} %{level:.4s} %{message}`,
+		)
+	}
 	logback := logging.NewLogBackend(os.Stderr, "", 0)
 	logfmt := logging.NewBackendFormatter(logback, format)
 	logging.SetBackend(logfmt)
