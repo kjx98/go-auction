@@ -257,6 +257,8 @@ func MatchOrder(sym string, isBuy bool, last, volume int) {
 	}
 }
 
+// last price is not Mid of bid/ask and c_last
+// To simplify, last price set to take price, optimized for liquidaty provider
 func tryMatchOrderBook(order *simOrderType) (filled bool) {
 	setFill := func(or *simOrderType, last int, vol int) (volFilled int) {
 		if vol >= or.Qty-or.Filled {
