@@ -1,10 +1,10 @@
 package main
 
 import (
-	"auction"
 	"encoding/csv"
 	"flag"
 	"fmt"
+	auction "github.com/kjx98/go-auction"
 	"math/rand"
 	"os"
 	"runtime"

@@ -28,9 +28,11 @@
 *.x86_64
 *.hex
 
-# Debug files
+# Debug/Backup files
 *.dSYM/
 *.su
+*.swp
+*~
 
 # Build directory and files
 *.depend

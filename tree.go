@@ -1,3 +1,4 @@
+//go:build !rbtree
 // +build !rbtree
 
 package auction

@@ -11,8 +11,8 @@
 #
 
 # Version for distribution
-VER=1_0r1
-GOPATH=$(shell go env GOPATH):$(PWD)
+VER=1_0r2
+#GOPATH=$(shell go env GOPATH):$(PWD)
 
 export GOPATH
 MAKEFILE=GNUmakefile
