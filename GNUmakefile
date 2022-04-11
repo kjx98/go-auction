@@ -43,18 +43,18 @@ dtest: bin/auction
 	done
 
 test:
-	@(cd src/auction;go test )
+	@go test
 
 bench:
 	sudo cpupower frequency-set --governor performance
-	@(cd src/auction;GOGC=400 go test -bench=Match)
+	@(GOGC=400 go test -bench=Match)
 	sudo cpupower frequency-set --governor powersave
 
 rbtest:
-	@(cd src/auction;go test -tags rbtree)
+	@go test -tags rbtree
 
 rbbench:
-	@(cd src/auction;GOGC=400 go test -tags rbtree -bench=Match)
+	@(GOGC=400 go test -tags rbtree -bench=Match)
 
 clean:
 
