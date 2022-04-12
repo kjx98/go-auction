@@ -93,6 +93,10 @@ var orders5 = []orderArgs{
 
 var orderSS = [][]orderArgs{orders1, orders2, orders3, orders4, orders5}
 
+func init() {
+	logging.SetLevel(logging.WARNING, "go-auction")
+}
+
 func buildOrBook(orders []orderArgs) {
 	for _, or := range orders {
 		if nn := SendOrder(or.sym, or.bBuy, or.qty, or.prc); nn == 0 {
@@ -449,10 +453,13 @@ func BenchmarkMatchCrossOld(b *testing.B) {
 	logging.SetLevel(logging.WARNING, "go-auction")
 	b.StartTimer()
 	for i := 0; i < b.N; i++ {
-		gotLast, vol, gotVolRemain := MatchCrossOld(instr, pclose)
-		if i == 0 {
-			b.Logf("MatchCrossOld price:%d, volume:%d, remainVol:%d", gotLast, vol, gotVolRemain)
-		}
+		MatchCrossOld(instr, pclose)
+		/*
+			gotLast, vol, gotVolRemain := MatchCrossOld(instr, pclose)
+			if i == 0 {
+				b.Logf("MatchCrossOld price:%d, volume:%d, remainVol:%d", gotLast, vol, gotVolRemain)
+			}
+		*/
 	}
 }
 
@@ -463,10 +470,13 @@ func BenchmarkMatchCross(b *testing.B) {
 	logging.SetLevel(logging.WARNING, "go-auction")
 	b.StartTimer()
 	for i := 0; i < b.N; i++ {
-		gotLast, vol, gotVolRemain := MatchCross(instr, pclose)
-		if i == 0 {
-			b.Logf("MatchCross price:%d, volume:%d, remainVol:%d", gotLast, vol, gotVolRemain)
-		}
+		MatchCross(instr, pclose)
+		/*
+			gotLast, vol, gotVolRemain := MatchCross(instr, pclose)
+				if i == 0 {
+					b.Logf("MatchCross price:%d, volume:%d, remainVol:%d", gotLast, vol, gotVolRemain)
+				}
+		*/
 	}
 }
 
@@ -475,8 +485,9 @@ func BenchmarkMatchTradeContinue(b *testing.B) {
 	instr := "cu1908"
 	buildBenchOrderBook(instr)
 	logging.SetLevel(logging.WARNING, "go-auction")
-	last, vol, volRemain := MatchCross(instr, pclose)
-	b.Logf("MatchCross price:%d, volume:%d, remainVol:%d", last, vol, volRemain)
+	//last, vol, volRemain := MatchCross(instr, pclose)
+	last, vol, _ := MatchCross(instr, pclose)
+	//b.Logf("MatchCross price:%d, volume:%d, remainVol:%d", last, vol, volRemain)
 	if last > 0 {
 		MatchOrder(instr, true, last, vol)
 		MatchOrder(instr, false, last, vol)
