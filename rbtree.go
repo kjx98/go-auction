@@ -1,3 +1,4 @@
+//go:build rbtree
 // +build rbtree
 
 package auction
@@ -7,19 +8,19 @@ import (
 )
 
 type Tree struct {
-	tree *rbtree.Tree
+	tree *rbtree.Tree[*simOrderType]
 }
 
 type Iterator struct {
-	tree *rbtree.Tree
-	it   *rbtree.Iterator
+	tree *rbtree.Tree[*simOrderType]
+	it   *rbtree.Iterator[*simOrderType]
 }
 
-type TreeNode = rbtree.Node
+//type TreeNode = rbtree.Node
 
-func NewTree(cmpF rbtree.CompareFunc) *Tree {
+func NewTree(cmpF rbtree.CompareFunc[*simOrderType]) *Tree {
 	var tree = Tree{}
-	tree.tree = rbtree.New(cmpF)
+	tree.tree = rbtree.New[*simOrderType](cmpF)
 	if tree.tree != nil {
 		return &tree
 	}
@@ -29,7 +30,7 @@ func NewTree(cmpF rbtree.CompareFunc) *Tree {
 
 func (t *Tree) destroy() {
 	for iter := t.tree.Min(); !iter.Limit(); iter = t.tree.Min() {
-		t.tree.DeleteWithKey(iter.Item())
+		t.tree.DeleteWithKey(*iter.Item())
 	}
 	t.tree = nil
 }
@@ -38,15 +39,15 @@ func (t *Tree) Len() int {
 	return t.tree.Len()
 }
 
-func (t *Tree) Find(key interface{}) interface{} {
-	return t.tree.Find(key)
+func (t *Tree) Find(key *simOrderType) *simOrderType {
+	return *t.tree.Find(key)
 }
 
-func (t *Tree) Delete(key interface{}) bool {
+func (t *Tree) Delete(key *simOrderType) bool {
 	return t.tree.DeleteWithKey(key)
 }
 
-func (t *Tree) Insert(v interface{}) {
+func (t *Tree) Insert(v *simOrderType) {
 	t.tree.Insert(v)
 }
 
@@ -56,22 +57,22 @@ func (t *Tree) First() *Iterator {
 	return &it
 }
 
-func (it *Iterator) First() interface{} {
+func (it *Iterator) First() *simOrderType {
 	it.it = it.tree.Min()
 	if it.it.Limit() {
 		return nil
 	}
-	return it.it.Item()
+	return *it.it.Item()
 }
 
-func (it *Iterator) Get() interface{} {
+func (it *Iterator) Get() *simOrderType {
 	if it.it.Limit() {
 		return nil
 	}
-	return it.it.Item()
+	return *it.it.Item()
 }
 
-func (it *Iterator) Next() interface{} {
+func (it *Iterator) Next() *simOrderType {
 	if it.it.Limit() {
 		return nil
 	}
@@ -79,7 +80,7 @@ func (it *Iterator) Next() interface{} {
 	if it.it.Limit() {
 		return nil
 	}
-	return it.it.Item()
+	return *it.it.Item()
 }
 
 func (it *Iterator) RemoveFirst() bool {

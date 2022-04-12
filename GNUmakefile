@@ -54,7 +54,9 @@ rbtest:
 	@go test -tags rbtree
 
 rbbench:
+	sudo cpupower frequency-set --governor performance
 	@(GOGC=400 go test -tags rbtree -bench=Match)
+	sudo cpupower frequency-set --governor powersave
 
 clean:
 

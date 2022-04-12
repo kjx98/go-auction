@@ -5,44 +5,26 @@ type orderBook struct {
 	bidIt, askIt *Iterator
 }
 
-func bidCompare(a, b interface{}) int {
-	ora, ok := a.(*simOrderType)
-	// maybe panic, if not simOrderType
-	if !ok {
-		return 0
+func bidCompare(a, b *simOrderType) int {
+	if a.price == b.price {
+		return a.oid - b.oid
 	}
-	orb, ok := b.(*simOrderType)
-	if !ok {
-		return 0
-	}
-	if ora.price == orb.price {
-		return ora.oid - orb.oid
-	}
-	if ora.price == 0 {
+	if a.price == 0 {
 		return -1
 	}
-	if orb.price == 0 {
+	if b.price == 0 {
 		return 1
 	}
 	// low price, low priority
-	return int(orb.price) - int(ora.price)
+	return int(b.price) - int(a.price)
 }
 
-func askCompare(a, b interface{}) int {
-	ora, ok := a.(*simOrderType)
-	// maybe panic, if not simOrderType
-	if !ok {
-		return 0
-	}
-	orb, ok := b.(*simOrderType)
-	if !ok {
-		return 0
-	}
-	if ora.price == orb.price {
-		return ora.oid - orb.oid
+func askCompare(a, b *simOrderType) int {
+	if a.price == b.price {
+		return a.oid - b.oid
 	}
 	// high price, low priority
-	return int(ora.price) - int(orb.price)
+	return int(a.price) - int(b.price)
 }
 
 func (orBook *orderBook) cleanup() {
@@ -110,8 +92,7 @@ func (orB *orderBook) getBestBid() *simOrderType {
 		orB.bidIt.First()
 	}
 	if v := orB.bidIt.Get(); v != nil {
-		or := v.(*simOrderType)
-		return or
+		return v
 	}
 	return nil
 }
@@ -119,8 +100,7 @@ func (orB *orderBook) getBestBid() *simOrderType {
 func (orB *orderBook) nextBid() *simOrderType {
 	if orB.bidIt != nil {
 		if v := orB.bidIt.Next(); v != nil {
-			or := v.(*simOrderType)
-			return or
+			return v
 		}
 	}
 	return nil
@@ -131,8 +111,7 @@ func (orB *orderBook) curBid() *simOrderType {
 		return nil
 	}
 	if v := orB.bidIt.Get(); v != nil {
-		or := v.(*simOrderType)
-		return or
+		return v
 	}
 	return nil
 }
@@ -141,11 +120,10 @@ func (orB *orderBook) getBestAsk() *simOrderType {
 	if orB.askIt == nil {
 		orB.askIt = orB.asks.First()
 	} else {
-			orB.askIt.First()
+		orB.askIt.First()
 	}
 	if v := orB.askIt.Get(); v != nil {
-		or := v.(*simOrderType)
-		return or
+		return v
 	}
 	return nil
 }
@@ -153,8 +131,7 @@ func (orB *orderBook) getBestAsk() *simOrderType {
 func (orB *orderBook) nextAsk() *simOrderType {
 	if orB.askIt != nil {
 		if v := orB.askIt.Next(); v != nil {
-			or := v.(*simOrderType)
-			return or
+			return v
 		}
 	}
 	return nil
@@ -165,8 +142,7 @@ func (orB *orderBook) curAsk() *simOrderType {
 		return nil
 	}
 	if v := orB.askIt.Get(); v != nil {
-		or := v.(*simOrderType)
-		return or
+		return v
 	}
 	return nil
 }

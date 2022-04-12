@@ -1,7 +1,8 @@
 package auction
 
+//	node        TreeNode
+//  ommmit TreeNode
 type simOrderType struct {
-	node        TreeNode
 	oid         int
 	price       int
 	Symbol      string

@@ -4,21 +4,21 @@
 package auction
 
 import (
-	"github.com/kjx98/avl"
+	avl "github.com/kjx98/go-avl"
 )
 
 type Tree struct {
-	tree *avl.Tree
+	tree *avl.Tree[simOrderType]
 }
 
 type Iterator struct {
-	tree *avl.Tree
-	it   *avl.Iterator
+	tree *avl.Tree[simOrderType]
+	it   *avl.Iterator[simOrderType]
 }
 
-type TreeNode = avl.Node
+//type TreeNode = avl.Node
 
-func NewTree(cmpF avl.CompareFunc) *Tree {
+func NewTree(cmpF avl.CompareFunc[simOrderType]) *Tree {
 	var tree = Tree{}
 	tree.tree = avl.New(cmpF)
 	if tree.tree != nil {
@@ -40,14 +40,14 @@ func (t *Tree) Len() int {
 	return t.tree.Len()
 }
 
-func (t *Tree) Find(key interface{}) interface{} {
+func (t *Tree) Find(key *simOrderType) *simOrderType {
 	if node := t.tree.Find(key); node != nil {
-		return node.Value
+		return &node.Value
 	}
 	return nil
 }
 
-func (t *Tree) Delete(key interface{}) bool {
+func (t *Tree) Delete(key *simOrderType) bool {
 	if v := t.tree.Find(key); v != nil {
 		t.tree.Remove(v)
 		return true
@@ -55,11 +55,11 @@ func (t *Tree) Delete(key interface{}) bool {
 	return false
 }
 
-func (t *Tree) Insert(v interface{}) {
-	or := v.(*simOrderType)
-	or.node.Value = v
-	t.tree.InsertNode(&or.node)
-	//t.tree.Insert(v)
+func (t *Tree) Insert(v *simOrderType) {
+	//or := v.(*simOrderType)
+	//or.node.Value = v
+	//t.tree.InsertNode(&or.node)
+	t.tree.Insert(v)
 }
 
 func (t *Tree) First() *Iterator {
@@ -69,23 +69,23 @@ func (t *Tree) First() *Iterator {
 	return &it
 }
 
-func (it *Iterator) First() interface{} {
+func (it *Iterator) First() *simOrderType {
 	if node := it.it.First(); node != nil {
-		return node.Value
+		return &node.Value
 	}
 	return nil
 }
 
-func (it *Iterator) Get() interface{} {
+func (it *Iterator) Get() *simOrderType {
 	if node := it.it.Get(); node != nil {
-		return node.Value
+		return &node.Value
 	}
 	return nil
 }
 
-func (it *Iterator) Next() interface{} {
+func (it *Iterator) Next() *simOrderType {
 	if node := it.it.Next(); node != nil {
-		return node.Value
+		return &node.Value
 	}
 	return nil
 }
